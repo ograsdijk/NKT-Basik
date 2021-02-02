@@ -1,12 +1,13 @@
 import logging
-import numpy as np
-from scipy import constants
+from enum import Enum
 from .dll.register_enums import RegLoc, RegTypeRead, RegScaling, RegTypeWrite
 from .bits_handling import NKTStatus, NKTError, NKTSetup, NKTModulationSetup, \
                             SetupBits
 from .dll.NKTP_DLL import openPorts, closePorts, deviceCreate, \
                             RegisterResultTypes, DeviceResultTypes
 
+class constants(Enum):
+    c   = 299792458.0
 
 class Basik:
     """Interface for an NKT Basik fiber seed laser from NKT Photonics
@@ -262,7 +263,7 @@ class Basik:
         Args:
             enable (bool): True = on, False = off
         """
-        self.write(RegLoc.EMISSION, np.uint8(enable))
+        self.write(RegLoc.EMISSION, int(enable))
 
     def getPower(self):
         """Power output in mW
@@ -399,7 +400,7 @@ class Basik:
         """
         center = self.getWavelengthCenter()
         offset = self.getWavelengthOffsetReadout() / 1e3
-        return constants.c/(center + offset)
+        return constants.c.value/(center + offset)
 
     def getFrequencySetpoint(self):
         """Frequency setpoint in GHz
@@ -409,7 +410,7 @@ class Basik:
         """
         center = self.getWavelengthCenter()
         offset = self.getWavelengthOffset() / 1e3
-        return constants.c/(center + offset)
+        return constants.c.value/(center + offset)
 
     def setFrequency(self, frequency):
         """Set module frequency in GHz
@@ -417,7 +418,7 @@ class Basik:
         Args:
             frequency (float): frequency in GHz
         """
-        self.setWavelength(constants.c/frequency)
+        self.setWavelength(constants.c.value/frequency)
 
     def moveFrequency(self, deviation):
         """Move module frequency in GHz
@@ -426,4 +427,4 @@ class Basik:
             deviation (float): frequency deviation in GHz
         """
         frequency = self.getFrequency()
-        self.setWavelength(constants.c/(frequency + deviation))
+        self.setWavelength(constants.c.vallue/(frequency + deviation))
