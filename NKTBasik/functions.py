@@ -1,5 +1,5 @@
 import logging
-from .module import Basik
+from .device import Basik
 from .dll.NKTP_DLL import DeviceResultTypes, openPorts, getAllPorts, \
                     deviceGetAllTypes, getOpenPorts, closePorts, deviceRemove
 
