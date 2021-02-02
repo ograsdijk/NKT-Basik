@@ -6,6 +6,13 @@ from .bits_handling import NKTStatus, NKTError, NKTSetup, NKTModulationSetup, \
 from .dll.NKTP_DLL import openPorts, closePorts, deviceCreate, deviceRemove, \
                             RegisterResultTypes, DeviceResultTypes
 
+class DeviceNotFoundError(Exception):
+    def __init__(self, message = ''):
+        self.message = message
+
+    def __str__(self):
+        return self.message
+
 class physicalConstants(Enum):
     c   = 299792458.0 # m/s
 
@@ -21,6 +28,7 @@ class Basik:
         devID (int) : device ID of the seed laser
     
     Methods:
+        _connect()
         query(register, index)
         write(register, value, index)
         getSerialNumber()
@@ -44,6 +52,8 @@ class Basik:
         getStatus()
         getErrorBits()
         getError()
+        getSetupBits()
+        getSetup()
         setModulation(enable)
         getModulation()
         getModulationRange()
@@ -64,15 +74,22 @@ class Basik:
         self.port = port
         self.devID = devID
 
-        device_result = openPorts(port, 0, 0)
-        if device_result != 0:
-            device_result = DeviceResultTypes(device_result).split(':')[-1]
-            logging.error(f'Basik opening port {port}: {device_result}')
+        self._connect()
 
-        device_result = deviceCreate(port, devID, 1)
+    def _connect(self):
+        """Connect to NKT basik module
+        """
+        device_result = openPorts(self.port, 0, 0)
         if device_result != 0:
             device_result = DeviceResultTypes(device_result).split(':')[-1]
-            logging.error(f'Basik creating device {devID} on port {port}: {device_result}')
+            logging.error(f'Basik opening port {self.port}: {device_result}') 
+            raise DeviceNotFoundError(f"port {self.port}")
+
+        device_result = deviceCreate(self.port, self.devID, 1)
+        if device_result != 0:
+            device_result = DeviceResultTypes(device_result).split(':')[-1]
+            logging.error(f'Basik creating device {self.devID} on port {self.port}: {device_result}')
+            raise DeviceNotFoundError(f"port {self.port}, devID {self.devID}")
 
     def close(self):
         deviceRemove(self.port, self.devID)
@@ -349,6 +366,22 @@ class Basik:
             list: list with triggered error codes
         """
         return NKTError(self.getErrorBits()).getErrors()
+
+    def getSetupBits(self):
+        """Module setup bits
+
+        Returns:
+            int: setup bits
+        """
+        return self.query(RegLoc.SETUP)
+
+    def getSetup(self):
+        """Readout module setup codes
+
+        Returns:
+            dict: setup code, value
+        """
+        return NKTSetup(self.getSetupBits()).getSetup()
 
     def setModulation(self, enable):
         """Enable or disable wavelength modulation
