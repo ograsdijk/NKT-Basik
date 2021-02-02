@@ -7,7 +7,7 @@ from .dll.NKTP_DLL import openPorts, closePorts, deviceCreate, \
                             RegisterResultTypes, DeviceResultTypes
 
 class constants(Enum):
-    c   = 299792458.0
+    c   = 299792458.0 # m/s
 
 class Basik:
     """Interface for an NKT Basik fiber seed laser from NKT Photonics
@@ -224,9 +224,9 @@ class Basik:
             wavelength (int): wavelenght offset in nm
         """
         center = self.getWavelengthCenter()
-        offset = int(wavelength - center)
+        offset = wavelength - center
         offset *= 1e3 # convert to pm
-        self.write(RegLoc.WAVELENGTH_OFFSET, offset)
+        self.write(RegLoc.WAVELENGTH_OFFSET, int(round(offset)))
 
     def getWavelengthSetpoint(self):
         """Get the device wavelength setpoint in nm
