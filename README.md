@@ -1,7 +1,7 @@
 # NKT-basik
 Version 0.1
 
-Interface for NKT Photonics Basik fiber seed laser.
+Interface for [NKT Photonics Basik fiber seed laser](https://www.nktphotonics.com/lasers-fibers/product/koheras-basik-low-noise-single-frequency-oem-laser-modules/), only tested with a Y10 model.  
 Consists of a class Basik which has the methods to modify wavelength, frequency, modulation, etc.
 
 ## Install
@@ -40,5 +40,8 @@ print(device.getErrors())
 
 # get device status
 print(device.getStatus())
-
 ```
+
+## TODO
+* more testing
+* add tests
