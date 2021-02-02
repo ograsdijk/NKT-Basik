@@ -66,7 +66,12 @@ class NKTStatus(Bits):
             try:
                 status.append(self.enum(bit).name)
             except ValueError:
-                logging.warning(f'Status bit {bit} not defined')
+                # for some reason status bit 2 is always active, but 
+                # the documention doesn't state what this bit means
+                if bit in [2]:
+                    logging.debug(f'Status bit {bit} not defined')
+                else:
+                    logging.warning(f'Status bit {bit} not defined')
         return status
 
     
