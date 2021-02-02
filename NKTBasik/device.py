@@ -3,10 +3,10 @@ from enum import Enum
 from .dll.register_enums import RegLoc, RegTypeRead, RegScaling, RegTypeWrite
 from .bits_handling import NKTStatus, NKTError, NKTSetup, NKTModulationSetup, \
                             SetupBits
-from .dll.NKTP_DLL import openPorts, closePorts, deviceCreate, \
+from .dll.NKTP_DLL import openPorts, closePorts, deviceCreate, deviceRemove, \
                             RegisterResultTypes, DeviceResultTypes
 
-class constants(Enum):
+class physicalConstants(Enum):
     c   = 299792458.0 # m/s
 
 class Basik:
@@ -73,6 +73,10 @@ class Basik:
         if device_result != 0:
             device_result = DeviceResultTypes(device_result).split(':')[-1]
             logging.error(f'Basik creating device {devID} on port {port}: {device_result}')
+
+    def close(self):
+        deviceRemove(self.port, self.devID)
+        closePorts(self.port)
 
     def query(self, register, index = -1):
         """Query a register on a NKT Basik module
@@ -400,7 +404,7 @@ class Basik:
         """
         center = self.getWavelengthCenter()
         offset = self.getWavelengthOffsetReadout() / 1e3
-        return constants.c.value/(center + offset)
+        return physicalConstants.c.value/(center + offset)
 
     def getFrequencySetpoint(self):
         """Frequency setpoint in GHz
@@ -410,7 +414,7 @@ class Basik:
         """
         center = self.getWavelengthCenter()
         offset = self.getWavelengthOffset() / 1e3
-        return constants.c.value/(center + offset)
+        return physicalConstants.c.value/(center + offset)
 
     def setFrequency(self, frequency):
         """Set module frequency in GHz
@@ -418,7 +422,7 @@ class Basik:
         Args:
             frequency (float): frequency in GHz
         """
-        self.setWavelength(constants.c.value/frequency)
+        self.setWavelength(physicalConstants.c.value/frequency)
 
     def moveFrequency(self, deviation):
         """Move module frequency in GHz
@@ -427,4 +431,4 @@ class Basik:
             deviation (float): frequency deviation in GHz
         """
         frequency = self.getFrequency()
-        self.setWavelength(constants.c.vallue/(frequency + deviation))
+        self.setWavelength(physicalConstants.c.value/(frequency + deviation))
