@@ -36,10 +36,12 @@ device.setModulation(enable = True)
 device.getEmission()
 
 # get device errors
-print(device.getErrors())
+print(device.getError())
 
 # get device status
 print(device.getStatus())
+
+device.setEmission(enable = False)
 ```
 
 ## TODO
