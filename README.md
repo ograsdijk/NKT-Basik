@@ -24,7 +24,7 @@ print(f'{device.getFrequency()} GHz')
 print(f'{device.getTemperature()} C')
 
 # set the wavelength setpoint in nm
-device.setWavelengthSetpoint(wavelength = 1086.7)
+device.setWavelength(wavelength = 1086.7)
 
 # enable emission
 device.setEmission(enable = True)
