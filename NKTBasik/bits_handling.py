@@ -1,6 +1,37 @@
 import logging
 from enum import Enum
-from dll.register_enums import StatusBits, ErrorBits, SetupBits, ModulationSetupBits
+
+class StatusBits(Enum):
+    EMISSION                = 0
+    INTERLOCK_OFF           = 1
+    DISABLED                = 4
+    SUPPLY_VOLTAGE_LOW      = 5
+    MODULE_TEMP_RANGE       = 6 
+    WAITING_TEMPERATURE     = 11
+    WAVELENGTH_STABILIZED   = 14
+    ERROR_CODE_PRESENT      = 15
+
+class ErrorBits(Enum):
+    NO_ERROR                    = 0
+    INTERLOCK                   = 2
+    LOW_VOLTAGE                 = 3
+    MODULE_TEMPERATURE_RANGE    = 7
+    MODULE_DISABLED             = 8
+
+class SetupBits(Enum):
+    NARROW_WAVELENGTH_MODULATION            = 1
+    EXTERNAL_WAVELENGTH_MODULATION          = 2
+    WAVELENGTH_MODULATION_DC                = 3
+    INTERNAL_WAVELENGTH_MODULATION          = 4
+    MODULATION_OUTPUT                       = 5 # output the wavelength modulation signal on the wavelength pins
+    PUMP_OPERATION_CONSTANT_CURRENT         = 8
+    EXTERNAL_AMPLITUDE_MODULATION_SOURCE    = 9
+
+class ModulationSetupBits(Enum):
+    AMPLITUDE_MODULATION_FREQUENCY_SELECTOR     = 0
+    AMPLITUDE_MODULATION_WAVEFORM               = 2 # 0 = sine, 1 = triangle
+    WAVELENGTH_MODULATION_FREQUENCY_SELECTOR    = 4
+    WAVELENGTH_MODULATION_WAVEFORM              = (6,7)
 
 class Bits:
     def __init__(self, value, enum):

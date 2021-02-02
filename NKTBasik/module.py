@@ -1,91 +1,98 @@
 import logging
 import numpy as np
 from scipy import constants
-from bits_handling import NKTStatus, NKTError, NKTSetup, NKTModulationSetup
-from dll.register_enums import RegLoc, RegTypeRead, RegScaling, RegTypeWrite, SetupBits
-from dll.NKTP_DLL import DeviceResultTypes, openPorts, getAllPorts,deviceGetAllTypes, getOpenPorts, \
-                        closePorts, deviceRemove, deviceCreate
+from .dll.register_enums import RegLoc, RegTypeRead, RegScaling, RegTypeWrite
+from .bits_handling import NKTStatus, NKTError, NKTSetup, NKTModulationSetup, \
+                            SetupBits
+from .dll.NKTP_DLL import openPorts, closePorts, deviceCreate, \
+                            RegisterResultTypes, DeviceResultTypes
 
-def find_device_by_name(name):
-    # arguments are automode and livemode
-    # automode: 0 open port, 1 open and start scanning devIDs
-    # livemode: 0 disables continuous monitoring, 1 enable; allows for callbacks
-    # takes about 2 to 3 s
-    openPorts(getAllPorts(), 1, 0)
 
-    devices = {}
-    for port in getOpenPorts().split(','):
-        result_type, device_types = deviceGetAllTypes(port)
-        if result_type != 0:
-            device_result = DeviceResultTypes(result_type).split(':')[-1]
-            logging.warning(f'find_device_by_name({name}): {device_result}')
-            continue
-        else:
-            devices[port] = [devID for devID in range(len(device_types)) if device_types[devID] != 0]
+class Basik:
+    """Interface for an NKT Basik fiber seed laser from NKT Photonics
 
-    for com, devIDs in devices.items():
-        for devID in devIDs:
-            basik = NKTBasik(com, devID)
-            if basik.getName() == name:
-                deviceRemove(com, devID)
-                closePorts(getOpenPorts())
-                return com, devID
-            else:
-                deviceRemove(com, devID)
+    Args:
+        port (str): COM port of the seed laser
+        devID (int): device ID of the seed laser
 
-    closePorts(getOpenPorts())
-    return None
-
-def find_devices_by_names(names):
-    # arguments are automode and livemode
-    # automode: 0 open port, 1 open and start scanning devIDs
-    # livemode: 0 disables continuous monitoring, 1 enable; allows for callbacks
-    # takes about 2 to 3 s
-    openPorts(getAllPorts(), 1, 0)
-
-    devices = {}
-    for port in getOpenPorts().split(','):
-        result_type, device_types = deviceGetAllTypes(port)
-        if result_type != 0:
-            device_result = DeviceResultTypes(result_type).split(':')[-1]
-            logging.warning(f'find_devices_by_names({names}): {device_result}')
-            continue
-        else:
-            devices[port] = [devID for devID in range(len(device_types)) if device_types[devID] != 0]
+    Attributes:
+        port (str)  : COM port of the seed laser
+        devID (int) : device ID of the seed laser
     
-    devices_by_name = {name: None for name in names}
-    for com, devIDs in devices.items():
-        for devID in devIDs:
-            basik = NKTBasik(com, devID)
-            if basik.getName() in names:
-                devices_by_name[basik.getName()] = (com, devID)
-            deviceRemove(com, devID)
+    Methods:
+        query(register, index)
+        write(register, value, index)
+        getSerialNumber()
+        setCurrentMode()
+        setPowerMode()
+        getOutputPowerSetpoint()
+        setOutputPowerSetpoint(power)
+        getWavelengthCenter()
+        getWavelengthOffset()
+        setWavelengthOffset(offset)
+        getWavelengthOffsetReadout()
+        getWavelength()
+        setWavelength()
+        getWavelengthSetpoint()
+        getTemperature()
+        getEmission()
+        setEmission()
+        getName()
+        setName(name)
+        getStatusBits()
+        getStatus()
+        getErrorBits()
+        getError()
+        setModulation(enable)
+        getModulation()
+        getModulationRange()
+        setModulationRange(modulation_range)
+        getFrequency()
+        getFrequencySetpoint()
+        setFrequency(frequency)
+        moveFrequency(deviation)
 
-    closePorts(getOpenPorts())
-    return devices_by_name
-        
-
-
-class NKTBasik:
+    """
     def __init__(self, port, devID):
+        """Initialize NKT Basik module
+
+        Args:
+            port (str): COM port of the seed laser
+            devID (int): device ID of the seed laser
+        """
         self.port = port
         self.devID = devID
 
-        openPorts(port, 0, 0)
-        deviceCreate(port, devID, 1)
+        device_result = openPorts(port, 0, 0)
+        if device_result != 0:
+            device_result = DeviceResultTypes(device_result).split(':')[-1]
+            logging.error(f'Basik opening port {port}: {device_result}')
 
-    def query(self, register, index = None):
-        if not index:
-            index = -1
-        result_type, value = RegTypeRead[register.name](
+        device_result = deviceCreate(port, devID, 1)
+        if device_result != 0:
+            device_result = DeviceResultTypes(device_result).split(':')[-1]
+            logging.error(f'Basik creating device {devID} on port {port}: {device_result}')
+
+    def query(self, register, index = -1):
+        """Query a register on a NKT Basik module
+
+        Args:
+            register (enum): RegLoc enum containing register locations
+            index (int, optional): register index. Defaults to -1.
+
+        Returns:
+            (int, float, str): value of the register. Type depends on the 
+                                specified register.
+        """
+        register_result, value = RegTypeRead[register.name](
                                                     self.port, 
                                                     self.devID,
                                                     register.value,
                                                     index
         )
-        if result_type != 0:
-            device_result = DeviceResultTypes(result_type).split(':')[-1]
-            logging.warning(f'NKTBasik query({register.name}, {index}): {device_result}')
+        if register_result != 0:
+            register_result = RegisterResultTypes(register_result).split(':')[-1]
+            logging.error(f'Basik query({register.name}, {index}): {register_result}')
             return None
 
         if isinstance(value, bytes):
@@ -98,21 +105,29 @@ class NKTBasik:
             pass
         return value
 
-    def write(self, register, value, index = None):
-        if not index:
-            index = -1
+    def write(self, register, value, index = -1):
+        """Write to a register on an NKT Basik module
+
+        Args:
+            register (enum): enum containing register locations
+            value (int, float, str): value to write to register
+            index (int, optional): register index. Defaults to -1.
+        """
         try:
             value /= RegScaling[register.name].value
             value = int(value)
         except KeyError:
             pass
-        RegTypeWrite[register.name](
-                                    self.port,
-                                    self.devID,
-                                    register.value,
-                                    value,
-                                    index
-        )
+        register_result = RegTypeWrite[register.name](
+                                                        self.port,
+                                                        self.devID,
+                                                        register.value,
+                                                        value,
+                                                        index
+                                                        )
+        if register_result != 0:
+            register_result = RegisterResultTypes(register_result).split(':')[-1]
+            logging.error(f"Basik write({register.name}, {value}, {index}: {register_result}")
 
     def getSerialNumber(self):
         """Module serial number
@@ -124,57 +139,85 @@ class NKTBasik:
         return serial
 
     def setCurrentMode(self):
+        """Set device in constant current mode
+        """
         setup = NKTSetup(self.query(RegLoc.SETUP))
         setup.setValue(SetupBits.PUMP_OPERATION_CONSTANT_CURRENT, 1)
         self.write(RegLoc.SETUP, setup.value)
 
     def setPowerMode(self):
+        """Set device in constant power mode
+        """
         setup = NKTSetup(self.query(RegLoc.SETUP))
         setup.setValue(SetupBits.PUMP_OPERATION_CONSTANT_CURRENT, 0)
         self.write(RegLoc.SETUP, setup.value)
 
-    def setOutputPowerSetpoint(self, power):
-        # not changing any settings
-        self.write(RegLoc.OUTPUT_POWER_SETPOINT_mW, power)
-
     def getOutputPowerSetpoint(self):
+        """Get the power mode setpoint in mW
+
+        Returns:
+            float: power mode setpoint
+        """
         setpoint = self.query(RegLoc.OUTPUT_POWER_SETPOINT_mW)
         return setpoint
 
-    def getWavelengthCenter(self):
+    def setOutputPowerSetpoint(self, power):
+        """Set power mode setpoint in mW.
+        Currently functioning, cause unknown.
+
+        Args:
+            power (float): power mode setpoint in mW
         """
-        Wavelength center in nm
+        # not changing any settings
+        self.write(RegLoc.OUTPUT_POWER_SETPOINT_mW, power)
+
+    def getWavelengthCenter(self):
+        """Get the device center wavelength in nm
+
+        Returns:
+            float: center wavelength in nm
         """
         center = self.query(RegLoc.WAVELENGTH_CENTER)
         return center
 
     def getWavelengthOffset(self):
-        """
-        Wavelength offset setpoint in pm
+        """Get the device wavelength offset setpoint in pm.
+
+        Returns:
+            float: wavelength offset setpoint in pm
         """
         offset = self.query(RegLoc.WAVELENGTH_OFFSET)
         return offset
 
     def setWavelengthOffset(self, offset):
+        """Set the device wavelength offset setpoint in pm.
+
+        Args:
+            offset (float): wavelength offset setpoint in pm
+        """
         self.write(RegLoc.WAVELENGTH_OFFSET, offset)
 
     def getWavelengthOffsetReadout(self):
-        """
-        Wavelength offset readout in pm
+        """Get the device readout wavelength offset setpoint in pm.
+
+        Returns:
+            float: device wavelength offset setpoint in pm
         """
         offset = self.query(RegLoc.WAVELENGTH_OFFSET_READOUT)
         return offset
 
     def getWavelength(self):
-        """
-        Wavelength in nm
+        """Get the device current wavelength in nm
+
+        Returns:
+            float: current wavelength in nm
         """
         center = self.getWavelengthCenter()
         offset = self.getWavelengthOffsetReadout() / 1e3 # convert to nm
         return center + offset
 
     def setWavelength(self, wavelength):
-        """Set wavelength offset
+        """Set the device wavelength setpoint in nm
 
         Args:
             wavelength (int): wavelenght offset in nm
@@ -185,8 +228,10 @@ class NKTBasik:
         self.write(RegLoc.WAVELENGTH_OFFSET, offset)
 
     def getWavelengthSetpoint(self):
-        """
-        Wavelength setpoint in nm
+        """Get the device wavelength setpoint in nm
+
+        Returns:
+            float: wavelength setpoint in nm
         """
         center = self.getWavelengthCenter()
         offset = self.getWavelengthOffset() / 1e3 # convert to nm
@@ -194,8 +239,10 @@ class NKTBasik:
 
 
     def getTemperature(self):
-        """
-        Module temperature in C
+        """Get device temperature in C
+
+        Returns:
+            float: temperature in C
         """
         temperature = self.query(RegLoc.TEMPERATURE)
         return temperature
@@ -209,13 +256,13 @@ class NKTBasik:
         emission = self.query(RegLoc.EMISSION)
         return bool(emission)
 
-    def setEmission(self, state):
+    def setEmission(self, enable):
         """Set module emission state
 
         Args:
-            state (bool): True = on, False = off
+            enable (bool): True = on, False = off
         """
-        self.write(RegLoc.EMISSION, np.uint8(state))
+        self.write(RegLoc.EMISSION, np.uint8(enable))
 
     def getPower(self):
         """Power output in mW
@@ -243,7 +290,7 @@ class NKTBasik:
         """
         self.write(RegLoc.NAME, name)
 
-    def getStatus(self):
+    def getStatusBits(self):
         """Module status bits
         0 : emission
         1 : interlock off
@@ -268,7 +315,15 @@ class NKTBasik:
         status = self.query(RegLoc.STATUS)
         return status
     
-    def getError(self):
+    def getStatus(self):
+        """Readout device status codes
+
+        Returns:
+            list: list with current status codes
+        """
+        return NKTStatus(self.getStatusBits()).getStatus()
+    
+    def getErrorBits(self):
         """Module error bits
         0: no error
         2: interlock
@@ -282,10 +337,28 @@ class NKTBasik:
         error = self.query(RegLoc.ERROR)
         return error
 
+    def getError(self):
+        """Readout the device error codes
+
+        Returns:
+            list: list with triggered error codes
+        """
+        return NKTError(self.getErrorBits()).getErrors()
+
     def setModulation(self, enable):
+        """Enable or disable wavelength modulation
+
+        Args:
+            enable (bool): True = enabled, False = disableb
+        """
         self.write(RegLoc.WAVELENGTH_MODULATION, int(enable))
 
     def getModulation(self):
+        """Get current wavelength modulation state
+
+        Returns:
+            bool: True = enabled, False = disabled
+        """
         return bool(self.query(RegLoc.WAVELENGTH_MODULATION))
     
     def getModulationRange(self):
@@ -304,7 +377,7 @@ class NKTBasik:
             modulation_range (str): WIDE or NARROW modulation range
         """
         if modulation_range not in ['WIDE', 'NARROW']:
-            logging.warning("NKTBasik setModulationRange(): invalid range" \
+            logging.error("Basik setModulationRange(): invalid range" \
                             +"specified, valid entries are NARROW or WIDE")
             return
 

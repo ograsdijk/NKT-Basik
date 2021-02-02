@@ -103,7 +103,11 @@ class RegScaling(Enum):
     OUTPUT_POWER_SETPOINT_dBm   = 0.01
 
 class RegUnits(Enum):
-    OUTPUT_POWER                = 'mW'
+    OUTPUT_POWER_mW             = 'mW'
+    OUTPUT_POWER_dBm            = 'dBm'
+    OUTPUT_POWER_SETPOINT_mW    = 'mW'
+    OUTPUT_POWER_SETPOINT_dBm   = 'dBm'
+
     TEMPERATURE                 = 'C'
     SUPPLY_VOLTAGE              = 'V'
 
@@ -112,37 +116,7 @@ class RegUnits(Enum):
     WAVELENGTH_OFFSET_READOUT   = 'pm'
     EMISSION                    = 'bool'
 
-    OUTPUT_POWER_SETPOINT_mW    = 'mW'
-    OUTPUT_POWER_SETPOINT_dBm   = 'dBm'
-
-class StatusBits(Enum):
-    EMISSION                = 0
-    INTERLOCK_OFF           = 1
-    DISABLED                = 4
-    SUPPLY_VOLTAGE_LOW      = 5
-    MODULE_TEMP_RANGE       = 6 
-    WAITING_TEMPERATURE     = 11
-    WAVELENGTH_STABILIZED   = 14
-    ERROR_CODE_PRESENT      = 15
-
-class ErrorBits(Enum):
-    NO_ERROR                    = 0
-    INTERLOCK                   = 2
-    LOW_VOLTAGE                 = 3
-    MODULE_TEMPERATURE_RANGE    = 7
-    MODULE_DISABLED             = 8
-
-class SetupBits(Enum):
-    NARROW_WAVELENGTH_MODULATION              = 1
-    EXTERNAL_WAVELENGTH_MODULATION          = 2
-    WAVELENGTH_MODULATION_DC                = 3
-    INTERNAL_WAVELENGTH_MODULATION          = 4
-    MODULATION_OUTPUT                       = 5 # output the wavelength modulation signal on the wavelength pins
-    PUMP_OPERATION_CONSTANT_CURRENT         = 8
-    EXTERNAL_AMPLITUDE_MODULATION_SOURCE    = 9
-
-class ModulationSetupBits(Enum):
-    AMPLITUDE_MODULATION_FREQUENCY_SELECTOR     = 0
-    AMPLITUDE_MODULATION_WAVEFORM               = 2 # 0 = sine, 1 = triangle
-    WAVELENGTH_MODULATION_FREQUENCY_SELECTOR    = 4
-    WAVELENGTH_MODULATION_WAVEFORM              = (6,7)
+    WAVELENGTH_MODULATION_FREQUENCY     = 'Hz'
+    WAVELENGTH_MODULATION_LEVEL         = 'permille'
+    WAVELENGTH_MODULATION_OFFSET        = 'permille'
+    AMPLITUDE_MODULATION_FREQUENCY      = 'Hz'

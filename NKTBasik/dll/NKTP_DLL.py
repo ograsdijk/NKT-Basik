@@ -3,11 +3,13 @@
 
 import ctypes
 from ctypes import *
+from pathlib import Path
 from collections import namedtuple
 
 # need to modify so it always loads the file from the same folder, regardless
 # of the cwd
-NKTPDLL = ctypes.cdll.LoadLibrary('dll/NKTPDLL.dll')
+path = Path(__file__).parent / "NKTPDLL.dll"
+NKTPDLL = ctypes.cdll.LoadLibrary(path.as_posix())
 
 def PortResultTypes(result):
         return {
