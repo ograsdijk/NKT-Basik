@@ -1,5 +1,6 @@
-# Python file supplied with the NKT SDK software
+# Python file supplied with the NKT SDK
 # modified to load dll (x64) in same folder
+
 import ctypes
 from ctypes import *
 from collections import namedtuple
