@@ -33,7 +33,7 @@ device.setEmission(enable = True)
 device.setModulation(enable = True)
 
 # disable emission
-device.getEmission(enable = False)
+device.getEmission()
 
 # get device errors
 print(device.getErrors())
