@@ -15,40 +15,40 @@ from NKTBasik import Basik
 device = Basik('COM4', 1)
 
 # get the wavelength in nm 
-print(f'Device wavelength: {device.getWavelength()} nm')
+print(f'Device wavelength: {device.wavelength} nm')
 
 # get the frequency in GHz
-print(f'Device frequency: {device.getFrequency():.4f} GHz')
+print(f'Device frequency: {device.frequency:.4f} GHz')
 
 # get the temperature in C
-print(f'Device temperature: {device.getTemperature():.1f} C')
+print(f'Device temperature: {device.temperature:.1f} C')
 
 # set the wavelength setpoint in nm
 print('Setting the wavelength to 1086.77 nm')
-device.setWavelength(wavelength = 1086.77)
+device.wavelength = 1086.77
 
 # get the wavelength in nm 
-print(f'Device wavelength: {device.getWavelength()} nm')
+print(f'Device wavelength: {device.wavelength} nm')
 
 # enable emission
 print('Enable emission')
-device.setEmission(enable = True)
+device.emission = True
 
 # enable wavelength modulation
-device.setModulation(enable = True)
+device.modulation = True
 
 # get device errors
-print('Errors:',device.getError())
+print('Errors:',device.error)
 
 # get device status
-print('Status:',device.getStatus())
+print('Status:',device.status)
 
 # disable emission
 print('Disable emission')
-device.setEmission(enable = False)
+device.emission = False
 
 # get device status
-print('Status:',device.getStatus())
+print('Status:',device.status)
 ```
 
 ## TODO
