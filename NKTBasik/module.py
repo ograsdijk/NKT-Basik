@@ -162,7 +162,7 @@ class Basik:
             index (int, optional): register index. Defaults to -1.
         """
         try:
-            if isinstance(value, int):
+            if isinstance(value, (int, float)):
                 value /= RegScaling[register.name].value
                 value = int(value)
         except KeyError:

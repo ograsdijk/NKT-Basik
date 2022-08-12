@@ -43,7 +43,7 @@ class RegTypeRead(Enum):
 
     OUTPUT_POWER_mW = partial(registerReadU16)
     OUTPUT_POWER_dBm = partial(registerReadU16)
-    OUTPUT_POWER_SETPOINT_mW = partial(registerReadS16)
+    OUTPUT_POWER_SETPOINT_mW = partial(registerReadU16)
     OUTPUT_POWER_SETPOINT_dBm = partial(registerReadS16)
     TEMPERATURE = partial(registerReadS16)
     SUPPLY_VOLTAGE = partial(registerReadU16)
@@ -87,7 +87,7 @@ class RegTypeWrite(Enum):
     NAME = partial(_write_ascii)
     SETUP = partial(registerWriteU16)
     OUTPUT_POWER_SETPOINT_dBm = partial(registerWriteS16)
-    OUTPUT_POWER_SETPOINT_mW = partial(registerWriteS16)
+    OUTPUT_POWER_SETPOINT_mW = partial(registerWriteU16)
     WAVELENGTH_MODULATION = partial(registerWriteU8)
     WAVELENGTH_MODULATION_FREQUENCY = partial(registerWriteF32)
     MODULATION_SETUP = partial(registerWriteU16)
