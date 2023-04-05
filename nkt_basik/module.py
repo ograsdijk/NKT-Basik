@@ -1,8 +1,6 @@
 import logging
 from enum import Enum
-from typing import List, Union
-
-from .utils import frequency_to_wavelength, wavelength_to_frequency
+from typing import Optional, Union
 
 from .bits_handling import (
     BasikError,
@@ -17,8 +15,8 @@ from .bits_handling import (
     SetupBits,
 )
 from .constants_and_enums import (
-    ModulationCoupling,
     LaserMode,
+    ModulationCoupling,
     ModulationRange,
     ModulationSource,
     WavelengthModulation,
@@ -32,6 +30,7 @@ from .dll.NKTP_DLL import (
     openPorts,
 )
 from .dll.register_enums import RegLoc, RegScaling, RegTypeRead, RegTypeWrite
+from .utils import frequency_to_wavelength, wavelength_to_frequency
 
 
 class DeviceNotFoundError(Exception):
@@ -104,8 +103,7 @@ class Basik:
         self._connect()
 
     def _connect(self):
-        """Connect to NKT basik module
-        """
+        """Connect to NKT basik module"""
         device_result = openPorts(self.port, 0, 0)
         if device_result != 0:
             device_result = DeviceResultTypes(device_result).split(":")[-1]
@@ -116,7 +114,8 @@ class Basik:
         if device_result != 0:
             device_result = DeviceResultTypes(device_result).split(":")[-1]
             logging.error(
-                f"Basik creating device {self.devID} on port {self.port}: {device_result}"
+                f"Basik creating device {self.devID} on port {self.port}:"
+                f" {device_result}"
             )
             raise DeviceNotFoundError(f"port {self.port}, devID {self.devID}")
 
@@ -124,7 +123,9 @@ class Basik:
         deviceRemove(self.port, self.devID)
         closePorts(self.port)
 
-    def query(self, register: Enum, index: int = -1):
+    def query(
+        self, register: Enum, index: int = -1
+    ) -> Optional[Union[int, float, str]]:
         """Query a register on a NKT Basik module
 
         Args:
@@ -227,7 +228,7 @@ class Basik:
         self.mode = LaserMode.POWER
 
     @property
-    def output_power_setpoint(self):
+    def output_power_setpoint(self) -> float:
         """
         Get the power mode setpoint in mW
 
@@ -250,7 +251,7 @@ class Basik:
         self.write(RegLoc.OUTPUT_POWER_SETPOINT_mW, power)
 
     @property
-    def wavelength_center(self):
+    def wavelength_center(self) -> float:
         """Get the device center wavelength in nm
 
         Returns:
@@ -260,7 +261,7 @@ class Basik:
         return center
 
     @property
-    def wavelength_offset(self):
+    def wavelength_offset(self) -> float:
         """Get the device wavelength offset setpoint in pm.
 
         Returns:
@@ -663,4 +664,3 @@ class Basik:
         """
         frequency = self.frequency_setpoint
         self.wavelength = round(frequency_to_wavelength(frequency + deviation), 3)
-

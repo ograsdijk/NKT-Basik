@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-import logging
 from enum import Enum
-from typing import List, Dict, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 
 @dataclass
@@ -174,4 +173,3 @@ class NKTModulationSetup(Bits):
         else:
             self.set_bit(6, 0)
             self.set_bit(7, 0)
-

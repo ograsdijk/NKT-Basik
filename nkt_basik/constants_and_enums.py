@@ -1,7 +1,7 @@
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
 
-from NKTBasik.bits_handling import ModulationWaveform
+from .bits_handling import ModulationWaveform
 
 
 class physicalConstants(Enum):

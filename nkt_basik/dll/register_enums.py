@@ -1,6 +1,20 @@
 from enum import Enum
-from .NKTP_DLL import *
 from functools import partial
+
+from .NKTP_DLL import (
+    registerReadAscii,
+    registerReadF32,
+    registerReadS16,
+    registerReadU8,
+    registerReadU16,
+    registerReadU32,
+    registerWriteAscii,
+    registerWriteF32,
+    registerWriteS16,
+    registerWriteU8,
+    registerWriteU16,
+    registerWriteU32,
+)
 
 
 class RegLoc(Enum):
@@ -132,4 +146,3 @@ class RegUnits(Enum):
     WAVELENGTH_MODULATION_LEVEL = "permille"
     WAVELENGTH_MODULATION_OFFSET = "permille"
     AMPLITUDE_MODULATION_FREQUENCY = "Hz"
-

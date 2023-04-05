@@ -1,7 +1,6 @@
 import time
-from typing import Optional
-from dataclasses import dataclass
-from NKTBasik import Basik
+
+from nkt_basik import Basik
 
 
 def check_stabilized(
@@ -42,7 +41,7 @@ device = Basik("COM6", 1)
 # get the temperature in C
 print(f"Device name: {device.name}")
 print(f"Device temperature: {device.temperature:.1f} C")
-print(f"==" * 25)
+print("==" * 25)
 
 wavelength = 1086.80
 
@@ -61,7 +60,7 @@ step_size = 10  # GHz
 
 print(f"original frequency = {device.frequency:.4f} GHz")
 print(f"setpoint frequency = {device.frequency + Δfrequency:.4f} GHz")
-print(f"==" * 25)
+print("==" * 25)
 for _ in range(int(Δfrequency / step_size)):
     device.move_frequency(step_size)
     time.sleep(5)

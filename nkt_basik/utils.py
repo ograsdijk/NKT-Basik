@@ -14,7 +14,6 @@ def wavelength_to_frequency(wavelength: float) -> float:
     return physicalConstants.c.value / wavelength
 
 
-
 def frequency_to_wavelength(frequency: float) -> float:
     """
     Convert frequency in GHz to wavelength in nm

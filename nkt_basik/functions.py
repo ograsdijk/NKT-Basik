@@ -1,14 +1,15 @@
 import logging
-from typing import Optional, List, Tuple, Dict
-from .module import Basik
+from typing import Dict, List, Optional, Tuple
+
 from .dll.NKTP_DLL import (
     DeviceResultTypes,
-    openPorts,
-    getAllPorts,
-    deviceGetAllTypes,
-    getOpenPorts,
     closePorts,
+    deviceGetAllTypes,
+    getAllPorts,
+    getOpenPorts,
+    openPorts,
 )
+from .module import Basik
 
 
 def find_device_by_name(

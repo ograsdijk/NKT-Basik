@@ -1,0 +1,21 @@
+[tool.poetry]
+name = "nkt-basik"
+version = "0.2.0"
+description = "Python interface for the NKT Photonics Basik fiber seed laser"
+authors = ["ograsdijk <o.grasdijk@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "nkt_basik"}]
+repository = "https://github.com/ograsdijk/NKT-Basik"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+
+[tool.poetry.group.dev.dependencies]
+black = "^23.3.0"
+flake8 = "^6.0.0"
+isort = "^5.12.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

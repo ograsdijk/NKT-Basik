@@ -3,7 +3,25 @@
 
 import ctypes
 from collections import namedtuple
-from ctypes import *
+from ctypes import (
+    CFUNCTYPE,
+    POINTER,
+    byref,
+    c_byte,
+    c_char,
+    c_char_p,
+    c_double,
+    c_float,
+    c_long,
+    c_longlong,
+    c_short,
+    c_ubyte,
+    c_ulong,
+    c_ulonglong,
+    c_ushort,
+    c_void_p,
+    create_string_buffer,
+)
 from pathlib import Path
 from typing import Tuple
 
@@ -110,9 +128,10 @@ def RegisterDataTypes(datatype: int) -> str:
 
 
 def RegisterPriorityTypes(priority: int) -> str:
-    return {0: "0:RegPriority_Low", 1: "1:RegPriority_High",}.get(
-        priority, "Unknown priority"
-    )
+    return {
+        0: "0:RegPriority_Low",
+        1: "1:RegPriority_High",
+    }.get(priority, "Unknown priority")
 
 
 def PortStatusTypes(status: int) -> str:
@@ -161,13 +180,13 @@ def RegisterStatusTypes(status: int) -> str:
 
 class tDateTimeStruct(ctypes.Structure):
     _fields_ = [
-        ("Sec", c_ubyte),  #!< Seconds
-        ("Min", c_ubyte),  #!< Minutes
-        ("Hour", c_ubyte),  #!< Hours
-        ("Day", c_ubyte),  #!< Days
-        ("Month", c_ubyte),  #!< Months
+        ("Sec", c_ubyte),  # !< Seconds
+        ("Min", c_ubyte),  # !< Minutes
+        ("Hour", c_ubyte),  # !< Hours
+        ("Day", c_ubyte),  # !< Days
+        ("Month", c_ubyte),  # !< Months
         ("Year", c_ubyte),
-    ]  #!< Years
+    ]  # !< Years
 
 
 def ParamSetUnitTypes(unit: int) -> str:
@@ -216,22 +235,22 @@ def ParamSetUnitTypes(unit: int) -> str:
 # * value = (ADC_value * (X/Y)) + Offset; Where value often is available via another measurement register\n
 class tParamSetStruct(ctypes.Structure):
     _fields_ = [
-        ("Unit", c_ubyte),  #!< Unit type as defined in ::ParamSetUnitTypes
-        ("ErrorHandler", c_ubyte),  #!< Warning/Errorhandler not used.
+        ("Unit", c_ubyte),  # !< Unit type as defined in ::ParamSetUnitTypes
+        ("ErrorHandler", c_ubyte),  # !< Warning/Errorhandler not used.
         (
             "StartVal",
             c_ushort,
-        ),  #!< Setpoint for Settings parameterset, unused in Measurement parametersets.
+        ),  # !< Setpoint for Settings parameterset, unused in Measurement parametersets.
         (
             "FactoryVal",
             c_ushort,
-        ),  #!< Factory Setpoint for Settings parameterset, unused in Measurement parametersets.
-        ("ULimit", c_ushort),  #!< Upper limit.
-        ("LLimit", c_ushort),  #!< Lower limit.
-        ("Numerator", c_short),  #!< Numerator(X) for calculation.
-        ("Denominator", c_short),  #!< Denominator(Y) for calculation.
+        ),  # !< Factory Setpoint for Settings parameterset, unused in Measurement parametersets.
+        ("ULimit", c_ushort),  # !< Upper limit.
+        ("LLimit", c_ushort),  # !< Lower limit.
+        ("Numerator", c_short),  # !< Numerator(X) for calculation.
+        ("Denominator", c_short),  # !< Denominator(Y) for calculation.
         ("Offset", c_short),
-    ]  #!< Offset for calculation
+    ]  # !< Offset for calculation
 
 
 # *******************************************************************************************************
@@ -1942,7 +1961,7 @@ _registerGetAll = CFUNCTYPE(
 
 def registerGetAll(portname, devId):
     _maxRegs = c_ubyte(255)
-    _regs = create_string_buffer(_maxTypes.value)
+    _regs = create_string_buffer(_maxRegs.value)
     result = _registerGetAll(portname.encode("ascii"), devId, _regs, _maxRegs)
     if result != 0:
         _maxRegs = c_ubyte(0)
@@ -2119,4 +2138,3 @@ def setCallbackPtrRegisterInfo(RegisterStatusCallback):
 
 
 # print(getOpenPorts())
-

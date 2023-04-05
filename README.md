@@ -5,12 +5,12 @@ Interface for [NKT Photonics Basik fiber seed laser](https://www.nktphotonics.co
 Consists of a class Basik which has the methods to modify wavelength, frequency, modulation, etc.
 
 ## Install
-To use the package install with `python setup.py install`
+To use the package install with `pip install nkt_basik` or install from source.
 
 ## Code Example
 
 ```Python
-from NKTBasik import Basik
+from nkt_basik import Basik
 
 device = Basik('COM4', 1)
 
