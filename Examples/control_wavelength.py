@@ -1,5 +1,7 @@
 import time
 
+from rich.console import Console
+
 from nkt_basik import Basik
 
 
@@ -9,31 +11,60 @@ def check_stabilized(
     tolerance: float = 1e-3,
     dt: float = 1.0,
     dt_stable: float = 5.0,
-    verbose: bool = True,
+    progress: bool = True,
 ):
+    if progress:
+        console = Console()
+    else:
+
+        class dummy:
+            class status:
+                def __init__(self, message: str, *args, **kwargs):
+                    pass
+
+                def __enter__(self):
+                    return None
+
+                def __exit__(self, *exc):
+                    return None
+
+        console = dummy()  # type: ignore
+
     units = {"wavelength": "nm", "frequency": "Ghz"}
     setpoint = getattr(device, f"{measurement}_setpoint")
+
+    unit = units["measurement"]
+
     # wait to stabilize
     counter = 0
-    while True:
-        wl = getattr(device, measurement)
-        if verbose:
-            print(
-                f"{measurement} = {wl:.4f} {units[measurement]}; Δ = {setpoint-wl:.4f} "
-                f"{units[measurement]}"
+    with console.status(
+        f"Waiting for {measurement} to stabilize", spinner="dots"
+    ) as status:
+        while True:
+            wl = getattr(device, measurement)
+            within_limits = abs(wl - setpoint) < tolerance
+            if within_limits:
+                color = "green"
+            else:
+                color = "red"
+            if progress:
+                status.update(
+                    f"Waiting for {measurement} to stabilize\n   set ="
+                    f" {setpoint:.4f} {unit}, act = [{color}]{wl:.2f} {unit}[/{color}],"
+                    f" Δ = [{color}]{setpoint - wl:.4f} {unit}[/{color}]"
+                )
+            if within_limits:
+                counter += 1
+                if dt * counter >= dt_stable:
+                    break
+            else:
+                counter = 0
+            time.sleep(dt)
+        if progress:
+            console.print(
+                f"reached setpoint with tolerance {tolerance:.2e} {unit}; stable for "
+                f"{dt*counter} seconds"
             )
-        if abs(wl - setpoint) < tolerance:
-            counter += 1
-            if dt * counter >= dt_stable:
-                break
-        else:
-            counter = 0
-        time.sleep(1)
-    if verbose:
-        print(
-            f"reached setpoint with tolerance {tolerance:.2e}; stable for "
-            f"{dt*counter} seconds"
-        )
 
 
 device = Basik("COM6", 1)
