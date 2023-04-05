@@ -1,5 +1,7 @@
 # NKT-basik
-Version 0.1
+[![Python versions on PyPI](https://img.shields.io/pypi/pyversions/nkt_basik.svg)](https://pypi.python.org/pypi/nkt_basik/)
+[![CeNTREX-TlF version on PyPI](https://img.shields.io/pypi/v/nkt_basik.svg "Precilaser on PyPI")](https://pypi.python.org/pypi/nkt_basik/)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 Interface for [NKT Photonics Basik fiber seed laser](https://www.nktphotonics.com/lasers-fibers/product/koheras-basik-low-noise-single-frequency-oem-laser-modules/), only tested with a Y10 model.  
 Consists of a class Basik which has the methods to modify wavelength, frequency, modulation, etc.
