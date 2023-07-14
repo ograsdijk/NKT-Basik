@@ -33,7 +33,7 @@ def check_stabilized(
     units = {"wavelength": "nm", "frequency": "Ghz"}
     setpoint = getattr(device, f"{measurement}_setpoint")
 
-    unit = units["measurement"]
+    unit = units[measurement]
 
     # wait to stabilize
     counter = 0
