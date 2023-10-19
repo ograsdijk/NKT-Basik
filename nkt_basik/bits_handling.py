@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, IntEnum
 from typing import Dict, List, Tuple, Union
 
 
@@ -13,7 +13,7 @@ class BasikState:
         ]
 
 
-class StatusBits(Enum):
+class StatusBits(IntEnum):
     EMISSION: int = 0
     INTERLOCK_OFF: int = 1
     DISABLED: int = 4
@@ -24,7 +24,7 @@ class StatusBits(Enum):
     ERROR_CODE_PRESENT: int = 15
 
 
-class ErrorBits(Enum):
+class ErrorBits(IntEnum):
     NO_ERROR: int = 0
     INTERLOCK: int = 2
     LOW_VOLTAGE: int = 3
@@ -32,7 +32,7 @@ class ErrorBits(Enum):
     MODULE_DISABLED: int = 8
 
 
-class SetupBits(Enum):
+class SetupBits(IntEnum):
     NARROW_WAVELENGTH_MODULATION: int = 1
     EXTERNAL_WAVELENGTH_MODULATION: int = 2
     WAVELENGTH_MODULATION_DC: int = 3
@@ -66,11 +66,11 @@ class Bits:
     def get_bit(self, bit: int) -> int:
         return self.value >> bit & 1
 
-    def set_value(self, enum: Enum, val: int) -> None:
-        self.set_bit(enum.value, val)
+    def set_value(self, enum: int, val: int) -> None:
+        self.set_bit(enum, val)
 
-    def get_value(self, enum: Enum) -> int:
-        return self.get_bit(enum.value)
+    def get_value(self, enum: int) -> int:
+        return self.get_bit(enum)
 
 
 @dataclass
@@ -135,7 +135,7 @@ class NKTSetup(Bits):
         )
 
 
-class ModulationWaveform(Enum):
+class ModulationWaveform(IntEnum):
     SINE: int = 0
     TRIANGLE: int = 1
     SAWTOOTH: int = 2

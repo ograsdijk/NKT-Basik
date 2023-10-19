@@ -31,6 +31,10 @@ path = Path(__file__).parent / "NKTPDLL.dll"
 NKTPDLL = ctypes.cdll.LoadLibrary(path.as_posix())
 
 
+class NKTRegisterException(Exception):
+    pass
+
+
 def PortResultTypes(result: int) -> str:
     return {
         0: "0:OPSuccess",

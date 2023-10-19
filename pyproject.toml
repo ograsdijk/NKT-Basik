@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nkt-basik"
-version = "0.2.0"
+version = "0.3.2"
 description = "Python interface for the NKT Photonics Basik fiber seed laser"
 authors = ["ograsdijk <o.grasdijk@gmail.com>"]
 license = "MIT"

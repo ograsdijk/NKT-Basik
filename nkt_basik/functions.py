@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, Optional, Sequence, Tuple
 
 from .dll.NKTP_DLL import (
     DeviceResultTypes,
@@ -12,8 +12,34 @@ from .dll.NKTP_DLL import (
 from .module import Basik
 
 
+def find_all_devices() -> Optional[Tuple[Tuple[str, int]]]:
+    """
+    Find all connected Basik modules
+
+    Returns:
+        Optional[Tuple[Tuple[str, int]]]: tuple of tuples with the com port and devID
+    """
+    openPorts(getAllPorts(), 1, 0)
+
+    devices = {}
+    for port in getOpenPorts().split(","):
+        device_result, device_types = deviceGetAllTypes(port)
+        if device_result != 0:
+            _device_result = DeviceResultTypes(device_result).split(":")[-1]
+            logging.warning(f"fin_all_devices: {_device_result}")
+            continue
+        else:
+            devices[port] = [
+                devID for devID in range(len(device_types)) if device_types[devID] != 0
+            ]
+    if len(devices) > 0:
+        return tuple([(port, devID) for port, devID in devices.items()])
+    else:
+        return None
+
+
 def find_device_by_name(
-    name: str, ports: Optional[List[str]] = None
+    name: str, ports: Optional[Sequence[str]] = None
 ) -> Optional[Tuple[str, int]]:
     """Find Basik module com port and device id by checking the user modifiable
     text field
@@ -63,7 +89,7 @@ def find_device_by_name(
 
 
 def find_devices_by_names(
-    names: List[str], ports=None
+    names: Sequence[str], ports: Optional[Sequence[str]] = None
 ) -> Dict[str, Optional[Tuple[str, int]]]:
     """Find Basik module com ports and device ids by checking the user
     modifiable text field for each of the supplied names

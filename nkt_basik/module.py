@@ -1,12 +1,9 @@
-import logging
-from enum import Enum
 from typing import Optional, Union
 
 from .bits_handling import (
     BasikError,
     BasikSetup,
     BasikStatus,
-    ModulationSetupBits,
     ModulationWaveform,
     NKTError,
     NKTModulationSetup,
@@ -23,6 +20,8 @@ from .constants_and_enums import (
 )
 from .dll.NKTP_DLL import (
     DeviceResultTypes,
+    NKTRegisterException,
+    PortResultTypes,
     RegisterResultTypes,
     closePorts,
     deviceCreate,
@@ -102,29 +101,33 @@ class Basik:
 
         self._connect()
 
+    def __exit__(self, *exc):
+        self.close()
+
     def _connect(self):
         """Connect to NKT basik module"""
         device_result = openPorts(self.port, 0, 0)
         if device_result != 0:
             device_result = DeviceResultTypes(device_result).split(":")[-1]
-            logging.error(f"Basik opening port {self.port}: {device_result}")
             raise DeviceNotFoundError(f"port {self.port}")
 
         device_result = deviceCreate(self.port, self.devID, 1)
         if device_result != 0:
             device_result = DeviceResultTypes(device_result).split(":")[-1]
-            logging.error(
-                f"Basik creating device {self.devID} on port {self.port}:"
-                f" {device_result}"
-            )
             raise DeviceNotFoundError(f"port {self.port}, devID {self.devID}")
 
     def close(self):
-        deviceRemove(self.port, self.devID)
-        closePorts(self.port)
+        ret = deviceRemove(self.port, self.devID)
+        if ret != 0:
+            ret_result = PortResultTypes(ret).split(":")[-1]
+            raise ValueError(f"port {self.port} {ret_result}")
+        ret = closePorts(self.port)
+        if ret != 0:
+            ret_result = PortResultTypes(ret).split(":")[-1]
+            raise ValueError(f"port {self.port} {ret_result}")
 
     def query(
-        self, register: Enum, index: int = -1
+        self, register: RegLoc, index: int = -1
     ) -> Optional[Union[int, float, str]]:
         """Query a register on a NKT Basik module
 
@@ -141,8 +144,9 @@ class Basik:
         )
         if register_result != 0:
             register_result = RegisterResultTypes(register_result).split(":")[-1]
-            logging.error(f"Basik query({register.name}, {index}): {register_result}")
-            return None
+            raise NKTRegisterException(
+                f"Basik query({register.name}, {index}): {register_result}"
+            )
 
         if isinstance(value, bytes):
             value = value.decode()
@@ -154,7 +158,7 @@ class Basik:
             pass
         return value
 
-    def write(self, register: Enum, value: Union[int, float, str], index: int = -1):
+    def write(self, register: RegLoc, value: Union[int, float, str], index: int = -1):
         """Write to a register on an NKT Basik module
 
         Args:
@@ -173,8 +177,8 @@ class Basik:
         )
         if register_result != 0:
             register_result = RegisterResultTypes(register_result).split(":")[-1]
-            logging.error(
-                f"Basik write({register.name}, {value}, {index}: {register_result}"
+            raise NKTRegisterException(
+                f"Basik write({register.name}, {index}): {register_result}"
             )
 
     @property
@@ -300,18 +304,6 @@ class Basik:
         offset = self.wavelength_offset_readout / 1e3  # convert to nm
         return center + offset
 
-    @wavelength.setter
-    def wavelength(self, wavelength: float) -> None:
-        """Set the device wavelength setpoint in nm
-
-        Args:
-            wavelength (int): wavelenght offset in nm
-        """
-        center = self.wavelength_center
-        offset = wavelength - center
-        offset *= 1e3  # convert to pm
-        self.write(RegLoc.WAVELENGTH_OFFSET, int(round(offset)))
-
     @property
     def wavelength_setpoint(self) -> float:
         """Get the device wavelength setpoint in nm
@@ -322,6 +314,18 @@ class Basik:
         center = self.wavelength_center
         offset = self.wavelength_offset / 1e3  # convert to nm
         return center + offset
+
+    @wavelength_setpoint.setter
+    def wavelength_setpoint(self, wavelength: float) -> None:
+        """Set the device wavelength setpoint in nm
+
+        Args:
+            wavelength (int): wavelenght offset in nm
+        """
+        center = self.wavelength_center
+        offset = wavelength - center
+        offset *= 1e3  # convert to pm
+        self.write(RegLoc.WAVELENGTH_OFFSET, offset)
 
     @property
     def temperature(self) -> float:
@@ -484,7 +488,7 @@ class Basik:
         Returns:
             ModulationSource: ModulationSource enum; NA, EXTERNAL, INTERNAL, BOTH
         """
-        setup = NKTSetup(self.query(RegLoc.SETUP))
+        setup = NKTSetup(int(self.query(RegLoc.SETUP)))
         internal = setup.get_value(SetupBits.INTERNAL_WAVELENGTH_MODULATION)
         external = setup.get_value(SetupBits.EXTERNAL_WAVELENGTH_MODULATION)
         return ModulationSource(external + (internal << 1))
@@ -636,15 +640,6 @@ class Basik:
         offset = self.wavelength_offset_readout / 1e3
         return round(wavelength_to_frequency(center + offset), 4)
 
-    @frequency.setter
-    def frequency(self, frequency: float) -> None:
-        """Set module frequency in GHz
-
-        Args:
-            frequency (float): frequency in GHz
-        """
-        self.wavelength = round(frequency_to_wavelength(frequency), 3)
-
     @property
     def frequency_setpoint(self) -> float:
         """Frequency setpoint in GHz
@@ -656,6 +651,15 @@ class Basik:
         offset = self.wavelength_offset / 1e3
         return round(wavelength_to_frequency(center + offset), 4)
 
+    @frequency_setpoint.setter
+    def frequency_setpoint(self, frequency: float) -> None:
+        """Set module frequency in GHz
+
+        Args:
+            frequency (float): frequency in GHz
+        """
+        self.wavelength_setpoint = round(frequency_to_wavelength(frequency), 3)
+
     def move_frequency(self, deviation: float) -> None:
         """Move module frequency in GHz
 
@@ -663,4 +667,6 @@ class Basik:
             deviation (float): frequency deviation in GHz
         """
         frequency = self.frequency_setpoint
-        self.wavelength = round(frequency_to_wavelength(frequency + deviation), 3)
+        self.wavelength_setpoint = round(
+            frequency_to_wavelength(frequency + deviation), 3
+        )
