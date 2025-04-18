@@ -206,15 +206,19 @@ class Basik:
         return LaserMode(val)
 
     @mode.setter
-    def mode(self, mode: LaserMode) -> None:
+    def mode(self, mode: str | LaserMode) -> None:
         """
         Setter of the Basik laser mode, possible modes are:
         POWER -> vary current to stabilize the power
         CURRENT -> stabilize the current
 
         Args:
-            mode (Mode): Mode enum (either POWER or CURRENT)
+            mode (str | LaserMode): Mode enum (either POWER or CURRENT)
         """
+        if isinstance(mode, str):
+            assert mode.casefold() in ["power", "current"]
+            mode = LaserMode[mode.upper()]
+
         setup = NKTSetup(self.query(RegLoc.SETUP))
         setup.set_value(SetupBits.PUMP_OPERATION_CONSTANT_CURRENT, mode.value)
         self.write(RegLoc.SETUP, setup.value)
@@ -494,13 +498,16 @@ class Basik:
         return ModulationSource(external + (internal << 1))
 
     @modulation_source.setter
-    def modulation_source(self, source: ModulationSource) -> None:
+    def modulation_source(self, source: str | ModulationSource) -> None:
         """
         Setter modulation source, either EXTERNAL, INTERNAL, BOTH
 
         Args:
-            source (ModulationSource): ModulationSource enum; EXTERNAL, INTERNAL, BOTH
+            source (str | ModulationSource): ModulationSource enum; EXTERNAL, INTERNAL, BOTH
         """
+        if isinstance(source, str):
+            assert source.casefold() in ["external", "internal", "both"]
+            source = ModulationSource[source.upper()]
         setup = NKTSetup(self.query(RegLoc.SETUP))
         internal = source.value & 2
         external = source.value & 1
@@ -519,12 +526,15 @@ class Basik:
         return ModulationRange(setup.get_value(SetupBits.NARROW_WAVELENGTH_MODULATION))
 
     @modulation_range.setter
-    def modulation_range(self, modulation_range: ModulationRange) -> None:
+    def modulation_range(self, modulation_range: str | ModulationRange) -> None:
         """Set module modulation range
 
         Args:
-            modulation_range (ModulationRange): WIDE or NARROW modulation range
+            modulation_range (str | ModulationRange): WIDE or NARROW modulation range
         """
+        if isinstance(modulation_range, str):
+            assert modulation_range.casefold() in ["wide", "lower"]
+            modulation_range = ModulationRange[modulation_range.upper()]
 
         setup = NKTModulationSetup(self.query(RegLoc.MODULATION_SETUP))
         setup.set_value(SetupBits.NARROW_WAVELENGTH_MODULATION, modulation_range.value)
@@ -584,13 +594,17 @@ class Basik:
         return ModulationCoupling(setup.get_value(SetupBits.WAVELENGTH_MODULATION_DC))
 
     @modulation_coupling.setter
-    def modulation_coupling(self, coupling: ModulationCoupling):
+    def modulation_coupling(self, coupling: str | ModulationCoupling):
         """
         Modulation coupling, either AC or DC
 
         Args:
-            coupling (Coupling): Enum with AC (0) or DC (1)
+            coupling (str | Coupling): Enum with AC (0) or DC (1)
         """
+        if isinstance(coupling, str):
+            assert coupling.casefold() in ["ac", "dc"]
+            coupling = ModulationCoupling[coupling.upper()]
+
         setup = NKTSetup(self.query(RegLoc.SETUP))
         setup.set_value(SetupBits.WAVELENGTH_MODULATION_DC, coupling.value)
         self.write(RegLoc.SETUP, setup.value)
@@ -607,7 +621,14 @@ class Basik:
         return NKTModulationSetup(self.query(RegLoc.MODULATION_SETUP)).get_waveform()
 
     @modulation_waveform.setter
-    def modulation_waveform(self, waveform: ModulationWaveform) -> None:
+    def modulation_waveform(self, waveform: str | ModulationWaveform) -> None:
+        if isinstance(waveform, str):
+            assert waveform.casefold() in [
+                "sine",
+                "triangle",
+                "sawtooth",
+                "inverse_sawtooth",
+            ]
         setup = NKTModulationSetup(self.query(RegLoc.MODULATION_SETUP))
         setup.set_waveform(waveform)
         self.write(RegLoc.MODULATION_SETUP, setup.value)
