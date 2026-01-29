@@ -101,6 +101,9 @@ class Basik:
 
         self._connect()
 
+    def __enter__(self):
+        return self
+
     def __exit__(self, *exc):
         self.close()
 
@@ -533,10 +536,10 @@ class Basik:
             modulation_range (str | ModulationRange): WIDE or NARROW modulation range
         """
         if isinstance(modulation_range, str):
-            assert modulation_range.casefold() in ["wide", "lower"]
+            assert modulation_range.casefold() in ["wide", "narrow"]
             modulation_range = ModulationRange[modulation_range.upper()]
 
-        setup = NKTModulationSetup(self.query(RegLoc.MODULATION_SETUP))
+        setup = NKTSetup(self.query(RegLoc.SETUP))
         setup.set_value(SetupBits.NARROW_WAVELENGTH_MODULATION, modulation_range.value)
 
         self.write(RegLoc.SETUP, setup.value)

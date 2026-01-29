@@ -144,7 +144,7 @@ class ModulationWaveform(IntEnum):
 
 class NKTModulationSetup(Bits):
     def __init__(self, value=None):
-        super().__init__(value)
+        super().__init__(0 if value is None else value)
 
     def get_setup(self) -> Dict[str, Union[int, str]]:
         setup: Dict[str, Union[int, str]] = {}

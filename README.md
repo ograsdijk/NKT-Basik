@@ -27,7 +27,7 @@ print(f'Device temperature: {device.temperature:.1f} C')
 
 # set the wavelength setpoint in nm
 print('Setting the wavelength to 1086.77 nm')
-device.wavelength = 1086.77
+device.wavelength_setpoint = 1086.77
 
 # get the wavelength in nm 
 print(f'Device wavelength: {device.wavelength} nm')

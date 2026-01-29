@@ -22,20 +22,27 @@ def find_all_devices() -> Optional[Tuple[Tuple[str, int]]]:
     openPorts(getAllPorts(), 1, 0)
 
     devices = {}
-    for port in getOpenPorts().split(","):
-        device_result, device_types = deviceGetAllTypes(port)
-        if device_result != 0:
-            _device_result = DeviceResultTypes(device_result).split(":")[-1]
-            logging.warning(f"fin_all_devices: {_device_result}")
-            continue
-        else:
-            devices[port] = [
-                devID for devID in range(len(device_types)) if device_types[devID] != 0
-            ]
+    try:
+        for port in filter(None, getOpenPorts().split(",")):
+            device_result, device_types = deviceGetAllTypes(port)
+            if device_result != 0:
+                _device_result = DeviceResultTypes(device_result).split(":")[-1]
+                logging.warning(f"find_all_devices: {_device_result}")
+                continue
+            else:
+                devices[port] = [
+                    devID
+                    for devID in range(len(device_types))
+                    if device_types[devID] != 0
+                ]
+    finally:
+        closePorts(getOpenPorts())
+
     if len(devices) > 0:
-        return tuple([(port, devID) for port, devID in devices.items()])
-    else:
-        return None
+        return tuple(
+            (port, devID) for port, devIDs in devices.items() for devID in devIDs
+        )
+    return None
 
 
 def find_device_by_name(
@@ -61,30 +68,30 @@ def find_device_by_name(
         openPorts(",".join(ports), 1, 0)
 
     devices = {}
-    for port in getOpenPorts().split(","):
-        device_result, device_types = deviceGetAllTypes(port)
-        if device_result != 0:
-            _device_result = DeviceResultTypes(device_result).split(":")[-1]
-            logging.warning(f"find_device_by_name({name}): {_device_result}")
-            continue
-        else:
-            devices[port] = [
-                devID for devID in range(len(device_types)) if device_types[devID] != 0
-            ]
-
-    closePorts(getOpenPorts())
+    try:
+        for port in filter(None, getOpenPorts().split(",")):
+            device_result, device_types = deviceGetAllTypes(port)
+            if device_result != 0:
+                _device_result = DeviceResultTypes(device_result).split(":")[-1]
+                logging.warning(f"find_device_by_name({name}): {_device_result}")
+                continue
+            else:
+                devices[port] = [
+                    devID
+                    for devID in range(len(device_types))
+                    if device_types[devID] != 0
+                ]
+    finally:
+        closePorts(getOpenPorts())
 
     for com, devIDs in devices.items():
         for devID in devIDs:
             basik = Basik(com, devID)
             if basik.name == name:
                 basik.close()
-                closePorts(getOpenPorts())
                 return com, devID
             else:
                 basik.close()
-
-    closePorts(getOpenPorts())
     return None
 
 
@@ -112,18 +119,21 @@ def find_devices_by_names(
         openPorts(",".join(ports), 1, 0)
 
     devices = {}
-    for port in getOpenPorts().split(","):
-        device_result, device_types = deviceGetAllTypes(port)
-        if device_result != 0:
-            _device_result = DeviceResultTypes(device_result).split(":")[-1]
-            logging.warning(f"find_devices_by_names({names}): {_device_result}")
-            continue
-        else:
-            devices[port] = [
-                devID for devID in range(len(device_types)) if device_types[devID] != 0
-            ]
-
-    closePorts(getOpenPorts())
+    try:
+        for port in filter(None, getOpenPorts().split(",")):
+            device_result, device_types = deviceGetAllTypes(port)
+            if device_result != 0:
+                _device_result = DeviceResultTypes(device_result).split(":")[-1]
+                logging.warning(f"find_devices_by_names({names}): {_device_result}")
+                continue
+            else:
+                devices[port] = [
+                    devID
+                    for devID in range(len(device_types))
+                    if device_types[devID] != 0
+                ]
+    finally:
+        closePorts(getOpenPorts())
 
     devices_by_name: Dict[str, Optional[Tuple[str, int]]] = {
         name: None for name in names
@@ -135,5 +145,4 @@ def find_devices_by_names(
                 devices_by_name[basik.name] = (com, devID)
             basik.close()
 
-    closePorts(getOpenPorts())
     return devices_by_name

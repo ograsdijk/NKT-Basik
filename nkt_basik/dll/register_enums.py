@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, member
 from functools import partial
 
 from .NKTP_DLL import (
@@ -55,31 +55,31 @@ class RegTypeRead(Enum):
     Registry types on NKT Photonics Basik K1x2 module
     """
 
-    OUTPUT_POWER_mW = partial(registerReadU16)
-    OUTPUT_POWER_dBm = partial(registerReadU16)
-    OUTPUT_POWER_SETPOINT_mW = partial(registerReadU16)
-    OUTPUT_POWER_SETPOINT_dBm = partial(registerReadS16)
-    TEMPERATURE = partial(registerReadS16)
-    SUPPLY_VOLTAGE = partial(registerReadU16)
-    WAVELENGTH_OFFSET = partial(registerReadS16)
-    WAVELENGTH_CENTER = partial(registerReadU32)
-    WAVELENGTH_OFFSET_READOUT = partial(registerReadS16)
-    EMISSION = partial(registerReadU8)
-    NAME = partial(registerReadAscii)
-    STATUS = partial(registerReadU8)
-    ERROR = partial(registerReadU8)
-    SETUP = partial(registerReadU16)
-    SERIAL_NUMBER = partial(registerReadAscii)
+    OUTPUT_POWER_mW = member(partial(registerReadU16))
+    OUTPUT_POWER_dBm = member(partial(registerReadU16))
+    OUTPUT_POWER_SETPOINT_mW = member(partial(registerReadU16))
+    OUTPUT_POWER_SETPOINT_dBm = member(partial(registerReadS16))
+    TEMPERATURE = member(partial(registerReadS16))
+    SUPPLY_VOLTAGE = member(partial(registerReadU16))
+    WAVELENGTH_OFFSET = member(partial(registerReadS16))
+    WAVELENGTH_CENTER = member(partial(registerReadU32))
+    WAVELENGTH_OFFSET_READOUT = member(partial(registerReadS16))
+    EMISSION = member(partial(registerReadU8))
+    NAME = member(partial(registerReadAscii))
+    STATUS = member(partial(registerReadU8))
+    ERROR = member(partial(registerReadU8))
+    SETUP = member(partial(registerReadU16))
+    SERIAL_NUMBER = member(partial(registerReadAscii))
 
-    WAVELENGTH_MODULATION = partial(registerReadU8)
+    WAVELENGTH_MODULATION = member(partial(registerReadU8))
 
-    MODULATION_SETUP = partial(registerReadU16)
+    MODULATION_SETUP = member(partial(registerReadU16))
 
-    WAVELENGTH_MODULATION_FREQUENCY = partial(registerReadF32)
-    WAVELENGTH_MODULATION_LEVEL = partial(registerReadU16)
-    WAVELENGTH_MODULATION_OFFSET = partial(registerReadS16)
-    AMPLITUDE_MODULATION_FREQUENCY = partial(registerReadF32)
-    AMPLITUDE_MODULATION_DEPTH = partial(registerReadU16)
+    WAVELENGTH_MODULATION_FREQUENCY = member(partial(registerReadF32))
+    WAVELENGTH_MODULATION_LEVEL = member(partial(registerReadU16))
+    WAVELENGTH_MODULATION_OFFSET = member(partial(registerReadS16))
+    AMPLITUDE_MODULATION_FREQUENCY = member(partial(registerReadF32))
+    AMPLITUDE_MODULATION_DEPTH = member(partial(registerReadU16))
 
     # make register functions callable
     def __call__(self, *args):
@@ -95,16 +95,16 @@ class RegTypeWrite(Enum):
     Registry types on NKT Photonics Basik K1x2 module
     """
 
-    WAVELENGTH_OFFSET = partial(registerWriteS16)
-    WAVELENGTH_CENTER = partial(registerWriteU32)
-    EMISSION = partial(registerWriteU8)
-    NAME = partial(_write_ascii)
-    SETUP = partial(registerWriteU16)
-    OUTPUT_POWER_SETPOINT_dBm = partial(registerWriteS16)
-    OUTPUT_POWER_SETPOINT_mW = partial(registerWriteU16)
-    WAVELENGTH_MODULATION = partial(registerWriteU8)
-    WAVELENGTH_MODULATION_FREQUENCY = partial(registerWriteF32)
-    MODULATION_SETUP = partial(registerWriteU16)
+    WAVELENGTH_OFFSET = member(partial(registerWriteS16))
+    WAVELENGTH_CENTER = member(partial(registerWriteU32))
+    EMISSION = member(partial(registerWriteU8))
+    NAME = member(partial(_write_ascii))
+    SETUP = member(partial(registerWriteU16))
+    OUTPUT_POWER_SETPOINT_dBm = member(partial(registerWriteS16))
+    OUTPUT_POWER_SETPOINT_mW = member(partial(registerWriteU16))
+    WAVELENGTH_MODULATION = member(partial(registerWriteU8))
+    WAVELENGTH_MODULATION_FREQUENCY = member(partial(registerWriteF32))
+    MODULATION_SETUP = member(partial(registerWriteU16))
 
     # make register functions callable
     def __call__(self, *args):

@@ -30,7 +30,7 @@ def check_stabilized(
 
         console = dummy()  # type: ignore
 
-    units = {"wavelength": "nm", "frequency": "Ghz"}
+    units = {"wavelength": "nm", "frequency": "GHz"}
     setpoint = getattr(device, f"{measurement}_setpoint")
 
     unit = units[measurement]
@@ -63,7 +63,7 @@ def check_stabilized(
         if progress:
             console.print(
                 f"reached setpoint with tolerance {tolerance:.2e} {unit}; stable for "
-                f"{dt*counter} seconds"
+                f"{dt * counter} seconds"
             )
 
 
@@ -78,7 +78,7 @@ wavelength = 1086.80
 
 # set the wavelength in nm
 if device.wavelength_setpoint != wavelength:
-    device.wavelength = wavelength
+    device.wavelength_setpoint = wavelength
 
     # wait to stabilize
     check_stabilized(device, "wavelength")
