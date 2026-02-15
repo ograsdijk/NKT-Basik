@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from enum import Enum, IntEnum
-from typing import Dict, List, Tuple, Union
+from enum import IntEnum
+from typing import Dict, List, Union
 
 
 @dataclass
@@ -14,41 +14,40 @@ class BasikState:
 
 
 class StatusBits(IntEnum):
-    EMISSION: int = 0
-    INTERLOCK_OFF: int = 1
-    DISABLED: int = 4
-    SUPPLY_VOLTAGE_LOW: int = 5
-    MODULE_TEMP_RANGE: int = 6
-    WAITING_TEMPERATURE: int = 11
-    WAVELENGTH_STABILIZED: int = 14
-    ERROR_CODE_PRESENT: int = 15
+    EMISSION = 0
+    INTERLOCK_OFF = 1
+    DISABLED = 4
+    SUPPLY_VOLTAGE_LOW = 5
+    MODULE_TEMP_RANGE = 6
+    WAITING_TEMPERATURE = 11
+    WAVELENGTH_STABILIZED = 14
+    ERROR_CODE_PRESENT = 15
 
 
 class ErrorBits(IntEnum):
-    NO_ERROR: int = 0
-    INTERLOCK: int = 2
-    LOW_VOLTAGE: int = 3
-    MODULE_TEMPERATURE_RANGE: int = 7
-    MODULE_DISABLED: int = 8
+    NO_ERROR = 0
+    INTERLOCK = 2
+    LOW_VOLTAGE = 3
+    MODULE_TEMPERATURE_RANGE = 7
+    MODULE_DISABLED = 8
 
 
 class SetupBits(IntEnum):
-    NARROW_WAVELENGTH_MODULATION: int = 1
-    EXTERNAL_WAVELENGTH_MODULATION: int = 2
-    WAVELENGTH_MODULATION_DC: int = 3
-    INTERNAL_WAVELENGTH_MODULATION: int = 4
-    MODULATION_OUTPUT: int = (
+    NARROW_WAVELENGTH_MODULATION = 1
+    EXTERNAL_WAVELENGTH_MODULATION = 2
+    WAVELENGTH_MODULATION_DC = 3
+    INTERNAL_WAVELENGTH_MODULATION = 4
+    MODULATION_OUTPUT = (
         5  # output the wavelength modulation signal on the wavelength pins
     )
-    PUMP_OPERATION_CONSTANT_CURRENT: int = 8
-    EXTERNAL_AMPLITUDE_MODULATION_SOURCE: int = 9
+    PUMP_OPERATION_CONSTANT_CURRENT = 8
+    EXTERNAL_AMPLITUDE_MODULATION_SOURCE = 9
 
 
-class ModulationSetupBits(Enum):
-    AMPLITUDE_MODULATION_FREQUENCY_SELECTOR: int = 0
-    AMPLITUDE_MODULATION_WAVEFORM: int = 2  # 0 = sine, 1 = triangle
-    WAVELENGTH_MODULATION_FREQUENCY_SELECTOR: int = 4
-    WAVELENGTH_MODULATION_WAVEFORM: Tuple[int, int] = (6, 7)
+class ModulationSetupBits(IntEnum):
+    AMPLITUDE_MODULATION_FREQUENCY_SELECTOR = 0
+    AMPLITUDE_MODULATION_WAVEFORM = 2  # 0 = sine, 1 = triangle
+    WAVELENGTH_MODULATION_FREQUENCY_SELECTOR = 4
 
 
 class Bits:
@@ -59,6 +58,7 @@ class Bits:
         return [i for i in range(self.value.bit_length()) if (self.value >> i & 1)]
 
     def set_bit(self, bit: int, bit_value: int) -> None:
+        bit_value = 1 if bit_value else 0
         value = self.value if self.value else 0
         value = value | (1 << bit) if bit_value else value & ~(1 << bit)
         self.value = value
@@ -136,10 +136,10 @@ class NKTSetup(Bits):
 
 
 class ModulationWaveform(IntEnum):
-    SINE: int = 0
-    TRIANGLE: int = 1
-    SAWTOOTH: int = 2
-    INVERSE_SAWTOOTH: int = 3
+    SINE = 0
+    TRIANGLE = 1
+    SAWTOOTH = 2
+    INVERSE_SAWTOOTH = 3
 
 
 class NKTModulationSetup(Bits):

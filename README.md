@@ -1,58 +1,85 @@
 # NKT-basik
-[![Python versions on PyPI](https://img.shields.io/pypi/pyversions/nkt_basik.svg)](https://pypi.python.org/pypi/nkt_basik/)
-[![nkt_basik version on PyPI](https://img.shields.io/pypi/v/nkt_basik.svg "NKT Basik on PyPI")](https://pypi.python.org/pypi/nkt_basik/)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Interface for [NKT Photonics Basik fiber seed laser](https://www.nktphotonics.com/lasers-fibers/product/koheras-basik-low-noise-single-frequency-oem-laser-modules/), only tested with a Y10 model.  
-Consists of a class Basik which has the methods to modify wavelength, frequency, modulation, etc.
+Python interface for [NKT Photonics Basik fiber seed lasers](https://www.nktphotonics.com/lasers-fibers/product/koheras-basik-low-noise-single-frequency-oem-laser-modules/).
 
 ## Install
-To use the package install with `pip install nkt_basik` or install from source.
 
-## Code Example
-
-```Python
-from nkt_basik import Basik
-
-device = Basik('COM4', 1)
-
-# get the wavelength in nm 
-print(f'Device wavelength: {device.wavelength} nm')
-
-# get the frequency in GHz
-print(f'Device frequency: {device.frequency:.4f} GHz')
-
-# get the temperature in C
-print(f'Device temperature: {device.temperature:.1f} C')
-
-# set the wavelength setpoint in nm
-print('Setting the wavelength to 1086.77 nm')
-device.wavelength_setpoint = 1086.77
-
-# get the wavelength in nm 
-print(f'Device wavelength: {device.wavelength} nm')
-
-# enable emission
-print('Enable emission')
-device.emission = True
-
-# enable wavelength modulation
-device.modulation = True
-
-# get device errors
-print('Errors:',device.error)
-
-# get device status
-print('Status:',device.status)
-
-# disable emission
-print('Disable emission')
-device.emission = False
-
-# get device status
-print('Status:',device.status)
+```bash
+pip install nkt_basik
 ```
 
-## TODO
-* more testing
-* add tests
+## API design
+
+The package now exposes one high-level API layer:
+
+- `Basik`
+- `LaserMode`
+- `ModulationRange`
+- `ModulationSource`
+- `ModulationCoupling`
+- `ModulationWaveform`
+- `DeviceRef`
+- `find_devices()` / `find_device()` / `find_devices_by_names()`
+
+Mode and modulation setters require enum inputs.
+
+## Quickstart
+
+```python
+from nkt_basik import (
+	Basik,
+	LaserMode,
+	ModulationCoupling,
+	ModulationRange,
+	ModulationSource,
+	ModulationWaveform,
+)
+
+device = Basik("COM4", 1)
+
+print(f"Name: {device.name}")
+print(f"Wavelength: {device.wavelength:.4f} nm")
+print(f"Frequency: {device.frequency:.4f} GHz")
+
+device.mode = LaserMode.POWER
+device.emission = True
+
+device.modulation = True
+device.modulation_source = ModulationSource.BOTH
+device.modulation_range = ModulationRange.NARROW
+device.modulation_coupling = ModulationCoupling.DC
+device.modulation_waveform = ModulationWaveform.SINE
+device.modulation_frequency = 100.0
+
+device.frequency_setpoint = 275.1000
+
+print(device.status)
+print(device.error)
+
+device.close()
+```
+
+Context manager usage is optional:
+
+```python
+with Basik("COM4", 1) as device:
+	print(device.name)
+```
+
+## Discovery
+
+```python
+from nkt_basik import find_device, find_devices, find_devices_by_names
+
+all_devices = find_devices()
+named = find_device("seed-a")
+grouped = find_devices_by_names(["seed-a", "seed-b"])
+```
+
+`find_devices()` always returns a list (possibly empty).
+
+## Errors
+
+- Connection failures raise `nkt_basik.module.BasikConnectionError`.
+- Bad API value types raise `nkt_basik.module.BasikTypeError`.
+- Register communication errors raise `NKTRegisterException`.

@@ -1,5 +1,6 @@
 import logging
-from typing import Dict, Optional, Sequence, Tuple
+from dataclasses import dataclass
+from typing import Sequence
 
 from .dll.NKTP_DLL import (
     DeviceResultTypes,
@@ -12,137 +13,71 @@ from .dll.NKTP_DLL import (
 from .module import Basik
 
 
-def find_all_devices() -> Optional[Tuple[Tuple[str, int]]]:
-    """
-    Find all connected Basik modules
+@dataclass(frozen=True)
+class DeviceRef:
+    port: str
+    dev_id: int
+    name: str
 
-    Returns:
-        Optional[Tuple[Tuple[str, int]]]: tuple of tuples with the com port and devID
-    """
-    openPorts(getAllPorts(), 1, 0)
 
-    devices = {}
+def _discover_raw(ports: Sequence[str] | None = None) -> list[tuple[str, int]]:
+    target_ports = getAllPorts() if ports is None else ",".join(ports)
+    openPorts(target_ports, 1, 0)
+
+    discovered: list[tuple[str, int]] = []
     try:
         for port in filter(None, getOpenPorts().split(",")):
             device_result, device_types = deviceGetAllTypes(port)
             if device_result != 0:
                 _device_result = DeviceResultTypes(device_result).split(":")[-1]
-                logging.warning(f"find_all_devices: {_device_result}")
+                logging.warning(f"discover_devices: {_device_result}")
                 continue
-            else:
-                devices[port] = [
-                    devID
-                    for devID in range(len(device_types))
-                    if device_types[devID] != 0
-                ]
+
+            discovered.extend(
+                (port, dev_id)
+                for dev_id in range(len(device_types))
+                if device_types[dev_id] != 0
+            )
     finally:
         closePorts(getOpenPorts())
 
-    if len(devices) > 0:
-        return tuple(
-            (port, devID) for port, devIDs in devices.items() for devID in devIDs
-        )
-    return None
+    return discovered
 
 
-def find_device_by_name(
-    name: str, ports: Optional[Sequence[str]] = None
-) -> Optional[Tuple[str, int]]:
-    """Find Basik module com port and device id by checking the user modifiable
-    text field
-
-    Args:
-        name (str)      : device
-        ports (list)    : list port COM ports to look at, if None tries all
+def find_devices(ports: Sequence[str] | None = None) -> list[DeviceRef]:
+    """Discover all devices and return typed descriptors.
 
     Returns:
-        tuple: (com, devID) or None if no device that matches found
+        list[DeviceRef]: list of discovered devices, empty if none are found.
     """
-    # arguments are automode and livemode
-    # automode: 0 open port, 1 open and start scanning devIDs
-    # livemode: 0 disables continuous monitoring, 1 enable; allows for callbacks
-    # takes about 2 to 3 s
-    if not ports:
-        openPorts(getAllPorts(), 1, 0)
-    else:
-        openPorts(",".join(ports), 1, 0)
 
-    devices = {}
-    try:
-        for port in filter(None, getOpenPorts().split(",")):
-            device_result, device_types = deviceGetAllTypes(port)
-            if device_result != 0:
-                _device_result = DeviceResultTypes(device_result).split(":")[-1]
-                logging.warning(f"find_device_by_name({name}): {_device_result}")
-                continue
-            else:
-                devices[port] = [
-                    devID
-                    for devID in range(len(device_types))
-                    if device_types[devID] != 0
-                ]
-    finally:
-        closePorts(getOpenPorts())
-
-    for com, devIDs in devices.items():
-        for devID in devIDs:
-            basik = Basik(com, devID)
-            if basik.name == name:
-                basik.close()
-                return com, devID
-            else:
-                basik.close()
-    return None
+    devices: list[DeviceRef] = []
+    for port, dev_id in _discover_raw(ports=ports):
+        with Basik(port, dev_id) as basik:
+            devices.append(DeviceRef(port=port, dev_id=dev_id, name=basik.name))
+    return devices
 
 
 def find_devices_by_names(
-    names: Sequence[str], ports: Optional[Sequence[str]] = None
-) -> Dict[str, Optional[Tuple[str, int]]]:
-    """Find Basik module com ports and device ids by checking the user
-    modifiable text field for each of the supplied names
-
-    Args:
-        names (list): list with devices names
-        ports (list): list port COM ports to look at, if None tries all
+    names: Sequence[str], ports: Sequence[str] | None = None
+) -> dict[str, list[DeviceRef]]:
+    """Discover devices and group matches by requested name.
 
     Returns:
-        dict: dictionary with a (com, devID) tuple for each name, or None if
-                device not found
+        dict[str, list[DeviceRef]]: mapping with empty lists for names that are not found.
     """
-    # arguments are automode and livemode
-    # automode: 0 open port, 1 open and start scanning devIDs
-    # livemode: 0 disables continuous monitoring, 1 enable; allows for callbacks
-    # takes about 2 to 3 s
-    if not ports:
-        openPorts(getAllPorts(), 1, 0)
-    else:
-        openPorts(",".join(ports), 1, 0)
 
-    devices = {}
-    try:
-        for port in filter(None, getOpenPorts().split(",")):
-            device_result, device_types = deviceGetAllTypes(port)
-            if device_result != 0:
-                _device_result = DeviceResultTypes(device_result).split(":")[-1]
-                logging.warning(f"find_devices_by_names({names}): {_device_result}")
-                continue
-            else:
-                devices[port] = [
-                    devID
-                    for devID in range(len(device_types))
-                    if device_types[devID] != 0
-                ]
-    finally:
-        closePorts(getOpenPorts())
+    grouped: dict[str, list[DeviceRef]] = {name: [] for name in names}
+    target_names = set(names)
 
-    devices_by_name: Dict[str, Optional[Tuple[str, int]]] = {
-        name: None for name in names
-    }
-    for com, devIDs in devices.items():
-        for devID in devIDs:
-            basik = Basik(com, devID)
-            if basik.name in names:
-                devices_by_name[basik.name] = (com, devID)
-            basik.close()
+    for device in find_devices(ports=ports):
+        if device.name in target_names:
+            grouped[device.name].append(device)
 
-    return devices_by_name
+    return grouped
+
+
+def find_device(name: str, ports: Sequence[str] | None = None) -> list[DeviceRef]:
+    """Discover all devices that match a given name."""
+
+    return find_devices_by_names([name], ports=ports)[name]

@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Union
 
 from .bits_handling import (
     BasikError,
@@ -32,61 +32,18 @@ from .dll.register_enums import RegLoc, RegScaling, RegTypeRead, RegTypeWrite
 from .utils import frequency_to_wavelength, wavelength_to_frequency
 
 
-class DeviceNotFoundError(Exception):
-    def __init__(self, message=""):
-        self.message = message
+class BasikConnectionError(Exception):
+    pass
 
-    def __str__(self):
-        return self.message
+
+class BasikTypeError(TypeError):
+    pass
 
 
 class Basik:
-    """Interface for an NKT Basik fiber seed laser from NKT Photonics
+    """High-level API for a single NKT Basik module.
 
-    Args:
-        port (str): COM port of the seed laser
-        devID (int): device ID of the seed laser
-
-    Attributes:
-        port (str)  : COM port of the seed laser
-        devID (int) : device ID of the seed laser
-
-    Methods:
-        _connect()
-        query(register, index)
-        write(register, value, index)
-        serial_number
-        current_mode
-        power_mode
-        power_mode_setpoint
-        power_mode_setpoint(power)
-        wavelength_center
-        wavelength_offset
-        wavelength_offset(offset)
-        wavelength_offset_readout
-        wavelength
-        wavelength(wavelength)
-        wavelength_setpoint
-        temperature
-        emission
-        emission(enable)
-        name()
-        name(name)
-        status_bits
-        status
-        error_bits
-        error
-        setup_bits()
-        setup
-        modulation
-        modulation(enable)
-        modulation_range
-        modulation_range(modulation_range)
-        frequency
-        frequency(frequency)
-        frequency_setpoint
-        move_frequency(deviation)
-
+    This API uses strict enum inputs for mode and modulation configuration.
     """
 
     def __init__(self, port: str, devID: int):
@@ -107,31 +64,37 @@ class Basik:
     def __exit__(self, *exc):
         self.close()
 
-    def _connect(self):
+    def _connect(self) -> None:
         """Connect to NKT basik module"""
         device_result = openPorts(self.port, 0, 0)
         if device_result != 0:
             device_result = DeviceResultTypes(device_result).split(":")[-1]
-            raise DeviceNotFoundError(f"port {self.port}")
+            raise BasikConnectionError(
+                f"Failed to open port {self.port}: {device_result}"
+            )
 
         device_result = deviceCreate(self.port, self.devID, 1)
         if device_result != 0:
             device_result = DeviceResultTypes(device_result).split(":")[-1]
-            raise DeviceNotFoundError(f"port {self.port}, devID {self.devID}")
+            raise BasikConnectionError(
+                f"Failed to create device on port {self.port}, devID {self.devID}: {device_result}"
+            )
 
-    def close(self):
+    def close(self) -> None:
         ret = deviceRemove(self.port, self.devID)
         if ret != 0:
             ret_result = PortResultTypes(ret).split(":")[-1]
-            raise ValueError(f"port {self.port} {ret_result}")
+            raise BasikConnectionError(
+                f"Failed to remove device on {self.port}: {ret_result}"
+            )
         ret = closePorts(self.port)
         if ret != 0:
             ret_result = PortResultTypes(ret).split(":")[-1]
-            raise ValueError(f"port {self.port} {ret_result}")
+            raise BasikConnectionError(
+                f"Failed to close port {self.port}: {ret_result}"
+            )
 
-    def query(
-        self, register: RegLoc, index: int = -1
-    ) -> Optional[Union[int, float, str]]:
+    def query(self, register: RegLoc, index: int = -1) -> Union[int, float, str]:
         """Query a register on a NKT Basik module
 
         Args:
@@ -151,14 +114,22 @@ class Basik:
                 f"Basik query({register.name}, {index}): {register_result}"
             )
 
+        if isinstance(value, memoryview):
+            value = value.tobytes()
+
+        if isinstance(value, bytearray):
+            value = bytes(value)
+
         if isinstance(value, bytes):
             value = value.decode()
 
-        try:
-            # rescale value
+        if register.name in RegScaling.__members__ and isinstance(value, (int, float)):
             value *= RegScaling[register.name].value
-        except KeyError:
-            pass
+
+        if not isinstance(value, (int, float, str)):
+            raise BasikTypeError(
+                f"Unsupported register value type for {register.name}: {type(value).__name__}."
+            )
         return value
 
     def write(self, register: RegLoc, value: Union[int, float, str], index: int = -1):
@@ -184,6 +155,34 @@ class Basik:
                 f"Basik write({register.name}, {index}): {register_result}"
             )
 
+    def _read_int(self, register: RegLoc, index: int = -1) -> int:
+        value = self.query(register, index=index)
+        if isinstance(value, bool):
+            return int(value)
+        if isinstance(value, int):
+            return value
+        if isinstance(value, float) and value.is_integer():
+            return int(value)
+        raise BasikTypeError(
+            f"Register {register.name} expected int-compatible value, got {type(value).__name__}."
+        )
+
+    def _read_float(self, register: RegLoc, index: int = -1) -> float:
+        value = self.query(register, index=index)
+        if isinstance(value, (int, float)):
+            return float(value)
+        raise BasikTypeError(
+            f"Register {register.name} expected float-compatible value, got {type(value).__name__}."
+        )
+
+    def _read_str(self, register: RegLoc, index: int = -1) -> str:
+        value = self.query(register, index=index)
+        if isinstance(value, str):
+            return value
+        raise BasikTypeError(
+            f"Register {register.name} expected string value, got {type(value).__name__}."
+        )
+
     @property
     def serial_number(self):
         """Module serial number
@@ -191,7 +190,7 @@ class Basik:
         Returns:
             str: serial number
         """
-        serial = self.query(RegLoc.SERIAL_NUMBER)
+        serial = self._read_str(RegLoc.SERIAL_NUMBER)
         return serial
 
     @property
@@ -204,25 +203,24 @@ class Basik:
         Returns:
             Mode: Mode enum (either POWER or CURRENT)
         """
-        setup = NKTSetup(self.query(RegLoc.SETUP))
+        setup = NKTSetup(self._read_int(RegLoc.SETUP))
         val = setup.get_value(SetupBits.PUMP_OPERATION_CONSTANT_CURRENT)
         return LaserMode(val)
 
     @mode.setter
-    def mode(self, mode: str | LaserMode) -> None:
+    def mode(self, mode: LaserMode) -> None:
         """
         Setter of the Basik laser mode, possible modes are:
         POWER -> vary current to stabilize the power
         CURRENT -> stabilize the current
 
         Args:
-            mode (str | LaserMode): Mode enum (either POWER or CURRENT)
+            mode (LaserMode): Mode enum (either POWER or CURRENT)
         """
-        if isinstance(mode, str):
-            assert mode.casefold() in ["power", "current"]
-            mode = LaserMode[mode.upper()]
+        if not isinstance(mode, LaserMode):
+            raise BasikTypeError("mode must be a LaserMode enum value.")
 
-        setup = NKTSetup(self.query(RegLoc.SETUP))
+        setup = NKTSetup(self._read_int(RegLoc.SETUP))
         setup.set_value(SetupBits.PUMP_OPERATION_CONSTANT_CURRENT, mode.value)
         self.write(RegLoc.SETUP, setup.value)
 
@@ -246,7 +244,7 @@ class Basik:
         Returns:
             float: power mode setpoint
         """
-        setpoint = self.query(RegLoc.OUTPUT_POWER_SETPOINT_mW)
+        setpoint = self._read_float(RegLoc.OUTPUT_POWER_SETPOINT_mW)
         return setpoint
 
     @output_power_setpoint.setter
@@ -268,7 +266,7 @@ class Basik:
         Returns:
             float: center wavelength in nm
         """
-        center = self.query(RegLoc.WAVELENGTH_CENTER)
+        center = self._read_float(RegLoc.WAVELENGTH_CENTER)
         return center
 
     @property
@@ -278,7 +276,7 @@ class Basik:
         Returns:
             float: wavelength offset setpoint in pm
         """
-        offset = self.query(RegLoc.WAVELENGTH_OFFSET)
+        offset = self._read_float(RegLoc.WAVELENGTH_OFFSET)
         return offset
 
     @wavelength_offset.setter
@@ -297,7 +295,7 @@ class Basik:
         Returns:
             float: device wavelength offset setpoint in pm
         """
-        offset = self.query(RegLoc.WAVELENGTH_OFFSET_READOUT)
+        offset = self._read_float(RegLoc.WAVELENGTH_OFFSET_READOUT)
         return offset
 
     @property
@@ -341,7 +339,7 @@ class Basik:
         Returns:
             float: temperature in C
         """
-        temperature = self.query(RegLoc.TEMPERATURE)
+        temperature = self._read_float(RegLoc.TEMPERATURE)
         return temperature
 
     @property
@@ -351,7 +349,7 @@ class Basik:
         Returns:
             bool: True = on, False = off
         """
-        emission = self.query(RegLoc.EMISSION)
+        emission = self._read_int(RegLoc.EMISSION)
         return bool(emission)
 
     @emission.setter
@@ -370,7 +368,7 @@ class Basik:
         Returns:
             float: power output in mW
         """
-        power = self.query(RegLoc.OUTPUT_POWER_mW)
+        power = self._read_float(RegLoc.OUTPUT_POWER_mW)
         return power
 
     @property
@@ -380,7 +378,7 @@ class Basik:
         Returns:
             string: module name
         """
-        name = self.query(RegLoc.NAME)
+        name = self._read_str(RegLoc.NAME)
         return name
 
     @name.setter
@@ -415,7 +413,7 @@ class Basik:
         Returns:
             int: status bits
         """
-        status = self.query(RegLoc.STATUS)
+        status = self._read_int(RegLoc.STATUS)
         return status
 
     @property
@@ -439,7 +437,7 @@ class Basik:
         Returns:
             int: error bits
         """
-        error = self.query(RegLoc.ERROR)
+        error = self._read_int(RegLoc.ERROR)
         return error
 
     @property
@@ -458,7 +456,7 @@ class Basik:
         Returns:
             int: setup bits
         """
-        return self.query(RegLoc.SETUP)
+        return self._read_int(RegLoc.SETUP)
 
     @property
     def setup(self) -> BasikSetup:
@@ -476,7 +474,7 @@ class Basik:
         Returns:
             bool: True = enabled, False = disabled
         """
-        return bool(self.query(RegLoc.WAVELENGTH_MODULATION))
+        return bool(self._read_int(RegLoc.WAVELENGTH_MODULATION))
 
     @modulation.setter
     def modulation(self, enable: bool) -> None:
@@ -495,24 +493,26 @@ class Basik:
         Returns:
             ModulationSource: ModulationSource enum; NA, EXTERNAL, INTERNAL, BOTH
         """
-        setup = NKTSetup(int(self.query(RegLoc.SETUP)))
+        setup = NKTSetup(self._read_int(RegLoc.SETUP))
         internal = setup.get_value(SetupBits.INTERNAL_WAVELENGTH_MODULATION)
         external = setup.get_value(SetupBits.EXTERNAL_WAVELENGTH_MODULATION)
         return ModulationSource(external + (internal << 1))
 
     @modulation_source.setter
-    def modulation_source(self, source: str | ModulationSource) -> None:
+    def modulation_source(self, source: ModulationSource) -> None:
         """
         Setter modulation source, either EXTERNAL, INTERNAL, BOTH
 
         Args:
-            source (str | ModulationSource): ModulationSource enum; EXTERNAL, INTERNAL, BOTH
+            source (ModulationSource): ModulationSource enum; EXTERNAL, INTERNAL, BOTH
         """
-        if isinstance(source, str):
-            assert source.casefold() in ["external", "internal", "both"]
-            source = ModulationSource[source.upper()]
-        setup = NKTSetup(self.query(RegLoc.SETUP))
-        internal = source.value & 2
+        if not isinstance(source, ModulationSource):
+            raise BasikTypeError(
+                "modulation_source must be a ModulationSource enum value."
+            )
+
+        setup = NKTSetup(self._read_int(RegLoc.SETUP))
+        internal = (source.value >> 1) & 1
         external = source.value & 1
         setup.set_value(SetupBits.INTERNAL_WAVELENGTH_MODULATION, internal)
         setup.set_value(SetupBits.EXTERNAL_WAVELENGTH_MODULATION, external)
@@ -525,21 +525,22 @@ class Basik:
         Returns:
             ModulationRange: WIDE or NARROW modulation range
         """
-        setup = NKTSetup(self.query(RegLoc.SETUP))
+        setup = NKTSetup(self._read_int(RegLoc.SETUP))
         return ModulationRange(setup.get_value(SetupBits.NARROW_WAVELENGTH_MODULATION))
 
     @modulation_range.setter
-    def modulation_range(self, modulation_range: str | ModulationRange) -> None:
+    def modulation_range(self, modulation_range: ModulationRange) -> None:
         """Set module modulation range
 
         Args:
-            modulation_range (str | ModulationRange): WIDE or NARROW modulation range
+            modulation_range (ModulationRange): WIDE or NARROW modulation range
         """
-        if isinstance(modulation_range, str):
-            assert modulation_range.casefold() in ["wide", "narrow"]
-            modulation_range = ModulationRange[modulation_range.upper()]
+        if not isinstance(modulation_range, ModulationRange):
+            raise BasikTypeError(
+                "modulation_range must be a ModulationRange enum value."
+            )
 
-        setup = NKTSetup(self.query(RegLoc.SETUP))
+        setup = NKTSetup(self._read_int(RegLoc.SETUP))
         setup.set_value(SetupBits.NARROW_WAVELENGTH_MODULATION, modulation_range.value)
 
         self.write(RegLoc.SETUP, setup.value)
@@ -552,7 +553,7 @@ class Basik:
         Returns:
             float: wavelength modulation frequency in Hz
         """
-        return self.query(RegLoc.WAVELENGTH_MODULATION_FREQUENCY, index=0)
+        return self._read_float(RegLoc.WAVELENGTH_MODULATION_FREQUENCY, index=0)
 
     @modulation_frequency.setter
     def modulation_frequency(self, frequency: float) -> None:
@@ -573,7 +574,7 @@ class Basik:
         Returns:
             float: wavelength modulation amplitude in % of full scale
         """
-        return self.query(RegLoc.WAVELENGTH_MODULATION_LEVEL)
+        return self._read_float(RegLoc.WAVELENGTH_MODULATION_LEVEL)
 
     @property
     def modulation_offset(self) -> float:
@@ -583,7 +584,7 @@ class Basik:
         Returns:
             float: wavelength modulation offset in % of full scale
         """
-        return self.query(RegLoc.WAVELENGTH_MODULATION_OFFSET)
+        return self._read_float(RegLoc.WAVELENGTH_MODULATION_OFFSET)
 
     @property
     def modulation_coupling(self) -> ModulationCoupling:
@@ -593,22 +594,23 @@ class Basik:
         Returns:
             Coupling: Enum with AC (0) or DC (1)
         """
-        setup = NKTSetup(self.query(RegLoc.SETUP))
+        setup = NKTSetup(self._read_int(RegLoc.SETUP))
         return ModulationCoupling(setup.get_value(SetupBits.WAVELENGTH_MODULATION_DC))
 
     @modulation_coupling.setter
-    def modulation_coupling(self, coupling: str | ModulationCoupling):
+    def modulation_coupling(self, coupling: ModulationCoupling):
         """
         Modulation coupling, either AC or DC
 
         Args:
-            coupling (str | Coupling): Enum with AC (0) or DC (1)
+            coupling (ModulationCoupling): Enum with AC (0) or DC (1)
         """
-        if isinstance(coupling, str):
-            assert coupling.casefold() in ["ac", "dc"]
-            coupling = ModulationCoupling[coupling.upper()]
+        if not isinstance(coupling, ModulationCoupling):
+            raise BasikTypeError(
+                "modulation_coupling must be a ModulationCoupling enum value."
+            )
 
-        setup = NKTSetup(self.query(RegLoc.SETUP))
+        setup = NKTSetup(self._read_int(RegLoc.SETUP))
         setup.set_value(SetupBits.WAVELENGTH_MODULATION_DC, coupling.value)
         self.write(RegLoc.SETUP, setup.value)
 
@@ -621,18 +623,17 @@ class Basik:
             ModulationWaveform: Enum with the modulation waveform; SINE, TRIANGLE,
                                 SAWTOOTH, INVERSE_SAWTOOTH
         """
-        return NKTModulationSetup(self.query(RegLoc.MODULATION_SETUP)).get_waveform()
+        return NKTModulationSetup(
+            self._read_int(RegLoc.MODULATION_SETUP)
+        ).get_waveform()
 
     @modulation_waveform.setter
-    def modulation_waveform(self, waveform: str | ModulationWaveform) -> None:
-        if isinstance(waveform, str):
-            assert waveform.casefold() in [
-                "sine",
-                "triangle",
-                "sawtooth",
-                "inverse_sawtooth",
-            ]
-        setup = NKTModulationSetup(self.query(RegLoc.MODULATION_SETUP))
+    def modulation_waveform(self, waveform: ModulationWaveform) -> None:
+        if not isinstance(waveform, ModulationWaveform):
+            raise BasikTypeError(
+                "modulation_waveform must be a ModulationWaveform enum value."
+            )
+        setup = NKTModulationSetup(self._read_int(RegLoc.MODULATION_SETUP))
         setup.set_waveform(waveform)
         self.write(RegLoc.MODULATION_SETUP, setup.value)
 
