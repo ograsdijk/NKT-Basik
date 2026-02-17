@@ -1,6 +1,6 @@
 [project]
 name = "nkt-basik"
-version = "0.4.0"
+version = "0.4.1"
 description = "Python interface for the NKT Photonics Basik fiber seed laser"
 readme = "README.md"
 license = { text = "MIT" }

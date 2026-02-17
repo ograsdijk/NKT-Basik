@@ -1,5 +1,3 @@
-from typing import Union
-
 from .bits_handling import (
     BasikError,
     BasikSetup,
@@ -94,7 +92,7 @@ class Basik:
                 f"Failed to close port {self.port}: {ret_result}"
             )
 
-    def query(self, register: RegLoc, index: int = -1) -> Union[int, float, str]:
+    def query(self, register: RegLoc, index: int = -1) -> int | float | str:
         """Query a register on a NKT Basik module
 
         Args:
@@ -132,7 +130,7 @@ class Basik:
             )
         return value
 
-    def write(self, register: RegLoc, value: Union[int, float, str], index: int = -1):
+    def write(self, register: RegLoc, value: int | float | str, index: int = -1):
         """Write to a register on an NKT Basik module
 
         Args:
@@ -183,6 +181,23 @@ class Basik:
             f"Register {register.name} expected string value, got {type(value).__name__}."
         )
 
+    def _coerce_enum_value(self, value, enum_type: type, field_name: str):
+        allowed_values = ", ".join(str(member.value) for member in enum_type)
+        error_msg = (
+            f"{field_name} must be a {enum_type.__name__} enum value or valid integer value "
+            f"({allowed_values})."
+        )
+        if isinstance(value, enum_type):
+            return value
+        if isinstance(value, bool):
+            raise BasikTypeError(error_msg)
+        if isinstance(value, int):
+            try:
+                return enum_type(value)
+            except ValueError:
+                pass
+        raise BasikTypeError(error_msg)
+
     @property
     def serial_number(self):
         """Module serial number
@@ -208,17 +223,16 @@ class Basik:
         return LaserMode(val)
 
     @mode.setter
-    def mode(self, mode: LaserMode) -> None:
+    def mode(self, mode: LaserMode | int) -> None:
         """
         Setter of the Basik laser mode, possible modes are:
         POWER -> vary current to stabilize the power
         CURRENT -> stabilize the current
 
         Args:
-            mode (LaserMode): Mode enum (either POWER or CURRENT)
+            mode (LaserMode | int): Mode enum (either POWER or CURRENT)
         """
-        if not isinstance(mode, LaserMode):
-            raise BasikTypeError("mode must be a LaserMode enum value.")
+        mode = self._coerce_enum_value(mode, LaserMode, "mode")
 
         setup = NKTSetup(self._read_int(RegLoc.SETUP))
         setup.set_value(SetupBits.PUMP_OPERATION_CONSTANT_CURRENT, mode.value)
@@ -341,6 +355,16 @@ class Basik:
         """
         temperature = self._read_float(RegLoc.TEMPERATURE)
         return temperature
+
+    @property
+    def supply_voltage(self) -> float:
+        """Get device supply voltage in V.
+
+        Returns:
+            float: supply voltage in V
+        """
+        voltage = self._read_float(RegLoc.SUPPLY_VOLTAGE)
+        return voltage
 
     @property
     def emission(self) -> bool:
@@ -499,17 +523,14 @@ class Basik:
         return ModulationSource(external + (internal << 1))
 
     @modulation_source.setter
-    def modulation_source(self, source: ModulationSource) -> None:
+    def modulation_source(self, source: ModulationSource | int) -> None:
         """
         Setter modulation source, either EXTERNAL, INTERNAL, BOTH
 
         Args:
-            source (ModulationSource): ModulationSource enum; EXTERNAL, INTERNAL, BOTH
+            source (ModulationSource | int): ModulationSource enum; EXTERNAL, INTERNAL, BOTH
         """
-        if not isinstance(source, ModulationSource):
-            raise BasikTypeError(
-                "modulation_source must be a ModulationSource enum value."
-            )
+        source = self._coerce_enum_value(source, ModulationSource, "modulation_source")
 
         setup = NKTSetup(self._read_int(RegLoc.SETUP))
         internal = (source.value >> 1) & 1
@@ -529,16 +550,15 @@ class Basik:
         return ModulationRange(setup.get_value(SetupBits.NARROW_WAVELENGTH_MODULATION))
 
     @modulation_range.setter
-    def modulation_range(self, modulation_range: ModulationRange) -> None:
+    def modulation_range(self, modulation_range: ModulationRange | int) -> None:
         """Set module modulation range
 
         Args:
-            modulation_range (ModulationRange): WIDE or NARROW modulation range
+            modulation_range (ModulationRange | int): WIDE or NARROW modulation range
         """
-        if not isinstance(modulation_range, ModulationRange):
-            raise BasikTypeError(
-                "modulation_range must be a ModulationRange enum value."
-            )
+        modulation_range = self._coerce_enum_value(
+            modulation_range, ModulationRange, "modulation_range"
+        )
 
         setup = NKTSetup(self._read_int(RegLoc.SETUP))
         setup.set_value(SetupBits.NARROW_WAVELENGTH_MODULATION, modulation_range.value)
@@ -598,17 +618,16 @@ class Basik:
         return ModulationCoupling(setup.get_value(SetupBits.WAVELENGTH_MODULATION_DC))
 
     @modulation_coupling.setter
-    def modulation_coupling(self, coupling: ModulationCoupling):
+    def modulation_coupling(self, coupling: ModulationCoupling | int):
         """
         Modulation coupling, either AC or DC
 
         Args:
-            coupling (ModulationCoupling): Enum with AC (0) or DC (1)
+            coupling (ModulationCoupling | int): Enum with AC (0) or DC (1)
         """
-        if not isinstance(coupling, ModulationCoupling):
-            raise BasikTypeError(
-                "modulation_coupling must be a ModulationCoupling enum value."
-            )
+        coupling = self._coerce_enum_value(
+            coupling, ModulationCoupling, "modulation_coupling"
+        )
 
         setup = NKTSetup(self._read_int(RegLoc.SETUP))
         setup.set_value(SetupBits.WAVELENGTH_MODULATION_DC, coupling.value)
@@ -628,11 +647,10 @@ class Basik:
         ).get_waveform()
 
     @modulation_waveform.setter
-    def modulation_waveform(self, waveform: ModulationWaveform) -> None:
-        if not isinstance(waveform, ModulationWaveform):
-            raise BasikTypeError(
-                "modulation_waveform must be a ModulationWaveform enum value."
-            )
+    def modulation_waveform(self, waveform: ModulationWaveform | int) -> None:
+        waveform = self._coerce_enum_value(
+            waveform, ModulationWaveform, "modulation_waveform"
+        )
         setup = NKTModulationSetup(self._read_int(RegLoc.MODULATION_SETUP))
         setup.set_waveform(waveform)
         self.write(RegLoc.MODULATION_SETUP, setup.value)

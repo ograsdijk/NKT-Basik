@@ -116,7 +116,8 @@ class RegScaling(Enum):
     Registry readout scaling on NKT Photonics Basik K1x2 module
     """
 
-    OUTPUT_POWER = 0.01
+    OUTPUT_POWER_mW = 0.01
+    OUTPUT_POWER_dBm = 0.01
     TEMPERATURE = 0.1
     SUPPLY_VOLTAGE = 0.001
     WAVELENGTH_OFFSET = 0.1

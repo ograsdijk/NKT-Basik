@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Dict, List, Union
 
 
 @dataclass
@@ -54,7 +53,7 @@ class Bits:
     def __init__(self, value: int):
         self.value = value
 
-    def get_set_bits(self) -> List:
+    def get_set_bits(self) -> list[int]:
         return [i for i in range(self.value.bit_length()) if (self.value >> i & 1)]
 
     def set_bit(self, bit: int, bit_value: int) -> None:
@@ -146,8 +145,8 @@ class NKTModulationSetup(Bits):
     def __init__(self, value=None):
         super().__init__(0 if value is None else value)
 
-    def get_setup(self) -> Dict[str, Union[int, str]]:
-        setup: Dict[str, Union[int, str]] = {}
+    def get_setup(self) -> dict[str, int | str]:
+        setup: dict[str, int | str] = {}
         for bit in [0, 2, 4]:
             setup[ModulationSetupBits(bit).name] = self.get_bit(
                 ModulationSetupBits(bit).value
