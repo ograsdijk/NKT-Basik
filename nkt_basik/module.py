@@ -74,6 +74,7 @@ class Basik:
         device_result = deviceCreate(self.port, self.devID, 1)
         if device_result != 0:
             device_result = DeviceResultTypes(device_result).split(":")[-1]
+            closePorts(self.port)
             raise BasikConnectionError(
                 f"Failed to create device on port {self.port}, devID {self.devID}: {device_result}"
             )

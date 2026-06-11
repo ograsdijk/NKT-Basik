@@ -4,6 +4,7 @@ from typing import Sequence
 
 from .dll.NKTP_DLL import (
     DeviceResultTypes,
+    PortResultTypes,
     closePorts,
     deviceGetAllTypes,
     getAllPorts,
@@ -22,11 +23,18 @@ class DeviceRef:
 
 def _discover_raw(ports: Sequence[str] | None = None) -> list[tuple[str, int]]:
     target_ports = getAllPorts() if ports is None else ",".join(ports)
-    openPorts(target_ports, 1, 0)
+    previously_open = set(filter(None, getOpenPorts().split(",")))
+    open_result = openPorts(target_ports, 1, 0)
+    if open_result != 0:
+        _open_result = PortResultTypes(open_result).split(":")[-1]
+        logging.warning(f"discover_devices: {_open_result}")
+        return []
 
     discovered: list[tuple[str, int]] = []
     try:
-        for port in filter(None, getOpenPorts().split(",")):
+        opened_ports = set(filter(None, getOpenPorts().split(",")))
+        discovered_ports = opened_ports - previously_open
+        for port in sorted(discovered_ports):
             device_result, device_types = deviceGetAllTypes(port)
             if device_result != 0:
                 _device_result = DeviceResultTypes(device_result).split(":")[-1]
@@ -39,7 +47,9 @@ def _discover_raw(ports: Sequence[str] | None = None) -> list[tuple[str, int]]:
                 if device_types[dev_id] != 0
             )
     finally:
-        closePorts(getOpenPorts())
+        ports_to_close = set(filter(None, getOpenPorts().split(","))) - previously_open
+        if ports_to_close:
+            closePorts(",".join(sorted(ports_to_close)))
 
     return discovered
 

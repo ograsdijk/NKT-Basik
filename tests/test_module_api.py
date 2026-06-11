@@ -5,9 +5,10 @@ from nkt_basik import (
     ModulationRange,
     ModulationSource,
 )
+import nkt_basik.module as module
 from nkt_basik.bits_handling import ModulationWaveform, NKTSetup, SetupBits
 from nkt_basik.dll.register_enums import RegLoc
-from nkt_basik.module import BasikTypeError
+from nkt_basik.module import BasikConnectionError, BasikTypeError
 
 
 def make_device() -> Basik:
@@ -15,6 +16,23 @@ def make_device() -> Basik:
     device.port = "COM_TEST"
     device.devID = 1
     return device
+
+
+def test_connect_closes_port_when_device_create_fails(monkeypatch) -> None:
+    closed_ports: list[str] = []
+
+    monkeypatch.setattr(module, "openPorts", lambda *_args, **_kwargs: 0)
+    monkeypatch.setattr(module, "deviceCreate", lambda *_args, **_kwargs: 3)
+    monkeypatch.setattr(module, "closePorts", closed_ports.append)
+
+    try:
+        Basik("COM_TEST", 1)
+    except BasikConnectionError:
+        pass
+    else:
+        raise AssertionError("Expected BasikConnectionError")
+
+    assert closed_ports == ["COM_TEST"]
 
 
 def test_mode_setter_requires_enum() -> None:
