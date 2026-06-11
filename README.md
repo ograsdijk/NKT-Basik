@@ -50,7 +50,7 @@ device.modulation_range = ModulationRange.NARROW
 device.modulation_coupling = ModulationCoupling.DC
 device.modulation_waveform = ModulationWaveform.SINE
 device.modulation_frequency = 100.0
-device.modulation_amplitude = 10.0
+device.modulation_level = 10.0
 device.modulation_offset = -5.0
 
 device.frequency_setpoint = 275.1000

@@ -106,6 +106,7 @@ class RegTypeWrite(Enum):
     WAVELENGTH_MODULATION_FREQUENCY = member(partial(registerWriteF32))
     WAVELENGTH_MODULATION_LEVEL = member(partial(registerWriteU16))
     WAVELENGTH_MODULATION_OFFSET = member(partial(registerWriteS16))
+    AMPLITUDE_MODULATION_DEPTH = member(partial(registerWriteU16))
     MODULATION_SETUP = member(partial(registerWriteU16))
 
     # make register functions callable
@@ -129,6 +130,7 @@ class RegScaling(Enum):
     OUTPUT_POWER_SETPOINT_dBm = 0.01
     WAVELENGTH_MODULATION_LEVEL = 0.1
     WAVELENGTH_MODULATION_OFFSET = 0.1
+    AMPLITUDE_MODULATION_DEPTH = 0.1
 
 
 class RegUnits(Enum):

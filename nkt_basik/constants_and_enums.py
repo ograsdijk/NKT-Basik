@@ -33,7 +33,7 @@ class ModulationSource(Enum):
 class WavelengthModulation:
     state: bool
     frequency: float
-    amplitude: float
+    level: float
     offset: float
     modulation_range: ModulationRange
     modulation_source: ModulationSource

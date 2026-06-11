@@ -595,7 +595,7 @@ class Basik:
         self.write(RegLoc.WAVELENGTH_MODULATION_FREQUENCY, frequency, index=0)
 
     @property
-    def modulation_amplitude(self) -> float:
+    def modulation_level(self) -> float:
         """
         Wavelength modulation amplitude
 
@@ -604,8 +604,8 @@ class Basik:
         """
         return self._read_float(RegLoc.WAVELENGTH_MODULATION_LEVEL)
 
-    @modulation_amplitude.setter
-    def modulation_amplitude(self, amplitude: float) -> None:
+    @modulation_level.setter
+    def modulation_level(self, amplitude: float) -> None:
         """
         Set wavelength modulation amplitude.
 
@@ -633,6 +633,26 @@ class Basik:
             offset (float): wavelength modulation offset in % of full scale
         """
         self.write(RegLoc.WAVELENGTH_MODULATION_OFFSET, offset)
+
+    @property
+    def modulation_gain(self) -> float:
+        """
+        Modulation gain
+
+        Returns:
+            float: modulation gain in % of full scale
+        """
+        return self._read_float(RegLoc.AMPLITUDE_MODULATION_DEPTH)
+
+    @modulation_gain.setter
+    def modulation_gain(self, gain: float) -> None:
+        """
+        Set modulation gain.
+
+        Args:
+            gain (float): modulation gain in % of full scale
+        """
+        self.write(RegLoc.AMPLITUDE_MODULATION_DEPTH, gain)
 
     @property
     def modulation_coupling(self) -> ModulationCoupling:
@@ -688,7 +708,7 @@ class Basik:
         return WavelengthModulation(
             self.modulation,
             self.modulation_frequency,
-            self.modulation_amplitude,
+            self.modulation_level,
             self.modulation_offset,
             self.modulation_range,
             self.modulation_source,
