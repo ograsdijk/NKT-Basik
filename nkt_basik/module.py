@@ -187,7 +187,9 @@ class Basik:
             f"Register {register.name} expected string value, got {type(value).__name__}."
         )
 
-    def _coerce_enum_value(self, value: _E | int, enum_type: Type[_E], field_name: str) -> _E:
+    def _coerce_enum_value(
+        self, value: _E | int, enum_type: Type[_E], field_name: str
+    ) -> _E:
         allowed_values = ", ".join(str(member.value) for member in enum_type)
         error_msg = (
             f"{field_name} must be a {enum_type.__name__} enum value or valid integer value "
