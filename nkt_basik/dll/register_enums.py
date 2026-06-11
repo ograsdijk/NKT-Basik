@@ -104,6 +104,8 @@ class RegTypeWrite(Enum):
     OUTPUT_POWER_SETPOINT_mW = member(partial(registerWriteU16))
     WAVELENGTH_MODULATION = member(partial(registerWriteU8))
     WAVELENGTH_MODULATION_FREQUENCY = member(partial(registerWriteF32))
+    WAVELENGTH_MODULATION_LEVEL = member(partial(registerWriteU16))
+    WAVELENGTH_MODULATION_OFFSET = member(partial(registerWriteS16))
     MODULATION_SETUP = member(partial(registerWriteU16))
 
     # make register functions callable

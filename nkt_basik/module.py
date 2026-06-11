@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import TypeVar, Type
+from typing import Type, TypeVar
 
 from .bits_handling import (
     BasikError,
@@ -604,6 +604,16 @@ class Basik:
         """
         return self._read_float(RegLoc.WAVELENGTH_MODULATION_LEVEL)
 
+    @modulation_amplitude.setter
+    def modulation_amplitude(self, amplitude: float) -> None:
+        """
+        Set wavelength modulation amplitude.
+
+        Args:
+            amplitude (float): wavelength modulation amplitude in % of full scale
+        """
+        self.write(RegLoc.WAVELENGTH_MODULATION_LEVEL, amplitude)
+
     @property
     def modulation_offset(self) -> float:
         """
@@ -613,6 +623,16 @@ class Basik:
             float: wavelength modulation offset in % of full scale
         """
         return self._read_float(RegLoc.WAVELENGTH_MODULATION_OFFSET)
+
+    @modulation_offset.setter
+    def modulation_offset(self, offset: float) -> None:
+        """
+        Set wavelength modulation offset.
+
+        Args:
+            offset (float): wavelength modulation offset in % of full scale
+        """
+        self.write(RegLoc.WAVELENGTH_MODULATION_OFFSET, offset)
 
     @property
     def modulation_coupling(self) -> ModulationCoupling:

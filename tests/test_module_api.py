@@ -146,6 +146,21 @@ def test_modulation_enum_setters_reject_out_of_range_ints() -> None:
         raise AssertionError(f"Expected BasikTypeError for invalid {attr} int")
 
 
+def test_modulation_amplitude_and_offset_setters_write_registers() -> None:
+    device = make_device()
+    writes: list[tuple[RegLoc, float, int]] = []
+
+    device.write = lambda reg, value, index=-1: writes.append((reg, value, index))  # type: ignore[method-assign]
+
+    device.modulation_amplitude = 12.3
+    device.modulation_offset = -4.5
+
+    assert writes == [
+        (RegLoc.WAVELENGTH_MODULATION_LEVEL, 12.3, -1),
+        (RegLoc.WAVELENGTH_MODULATION_OFFSET, -4.5, -1),
+    ]
+
+
 def test_supply_voltage_property_reads_register() -> None:
     device = make_device()
 
