@@ -1,3 +1,6 @@
+from enum import Enum
+from typing import TypeVar, Type
+
 from .bits_handling import (
     BasikError,
     BasikSetup,
@@ -28,6 +31,8 @@ from .dll.NKTP_DLL import (
 )
 from .dll.register_enums import RegLoc, RegScaling, RegTypeRead, RegTypeWrite
 from .utils import frequency_to_wavelength, wavelength_to_frequency
+
+_E = TypeVar("_E", bound=Enum)
 
 
 class BasikConnectionError(Exception):
@@ -182,7 +187,7 @@ class Basik:
             f"Register {register.name} expected string value, got {type(value).__name__}."
         )
 
-    def _coerce_enum_value(self, value, enum_type: type, field_name: str):
+    def _coerce_enum_value(self, value: _E | int, enum_type: Type[_E], field_name: str) -> _E:
         allowed_values = ", ".join(str(member.value) for member in enum_type)
         error_msg = (
             f"{field_name} must be a {enum_type.__name__} enum value or valid integer value "
