@@ -7,7 +7,7 @@ from .constants_and_enums import (
     WavelengthModulation,
 )
 from .functions import DeviceRef, find_device, find_devices, find_devices_by_names
-from .module import Basik
+from .module import Basik, ParamSet
 
 __all__ = [
     "ModulationWaveform",
@@ -18,6 +18,7 @@ __all__ = [
     "WavelengthModulation",
     "DeviceRef",
     "Basik",
+    "ParamSet",
     "find_device",
     "find_devices",
     "find_devices_by_names",

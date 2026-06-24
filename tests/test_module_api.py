@@ -155,11 +155,14 @@ def test_modulation_level_offset_and_depth_setters_write_registers() -> None:
     device.modulation_level = 12.3
     device.modulation_offset = -4.5
     device.modulation_gain = 6.7
+    device.amplitude_modulation_depth = 8.9
 
     assert writes == [
         (RegLoc.WAVELENGTH_MODULATION_LEVEL, 12.3, -1),
         (RegLoc.WAVELENGTH_MODULATION_OFFSET, -4.5, -1),
-        (RegLoc.AMPLITUDE_MODULATION_DEPTH, 6.7, -1),
+        # external piezo modulation gain lives in the high word of 0xA1 (index 2)
+        (RegLoc.EXTERNAL_MODULATION_GAIN, 6.7, 2),
+        (RegLoc.AMPLITUDE_MODULATION_DEPTH, 8.9, -1),
     ]
 
 
@@ -174,3 +177,94 @@ def test_supply_voltage_property_reads_register() -> None:
     device.query = fake_query  # type: ignore[method-assign]
 
     assert device.supply_voltage == 24.5
+
+
+def _paramset_bytes(unit, startval, factory, ulimit, llimit, *, signed=False):
+    """Build a 16-byte tParamSetStruct block (Num=Den=1, Offset=0)."""
+
+    def w(v):
+        return int(v).to_bytes(2, "little", signed=signed)
+
+    return (
+        bytes([unit, 0])
+        + w(startval)
+        + w(factory)
+        + w(ulimit)
+        + w(llimit)
+        + b"\x01\x00\x01\x00\x00\x00"
+    )
+
+
+def test_read_paramset_parses_gain(monkeypatch) -> None:
+    device = make_device()
+    # the gain paramset lives at 0xD3 (override): PerMille, SV 2003, range [37, 2569]
+    blocks = {0xD3: _paramset_bytes(18, 2003, 0, 2569, 37)}
+    monkeypatch.setattr(
+        module,
+        "registerRead",
+        lambda port, dev, reg, index: (0, blocks[reg]) if reg in blocks else (4, b""),
+    )
+
+    ps = device.read_paramset(RegLoc.EXTERNAL_MODULATION_GAIN)
+    assert ps is not None
+    assert ps.unit == "PerMille"
+    assert round(ps.value, 1) == 200.3
+    assert round(ps.min, 1) == 3.7
+    assert round(ps.max, 1) == 256.9
+    assert device.describe(RegLoc.EXTERNAL_MODULATION_GAIN)["max"] == ps.max
+
+
+def test_read_paramset_handles_signed_offset(monkeypatch) -> None:
+    device = make_device()
+    # wavelength modulation offset (0x2F -> 0x5F) is signed; limits +/-1000 permille
+    blocks = {0x5F: _paramset_bytes(18, 0, 0, 1000, -1000, signed=True)}
+    monkeypatch.setattr(
+        module,
+        "registerRead",
+        lambda port, dev, reg, index: (0, blocks[reg]) if reg in blocks else (4, b""),
+    )
+
+    ps = device.read_paramset(RegLoc.WAVELENGTH_MODULATION_OFFSET)
+    assert ps is not None
+    assert round(ps.min, 1) == -100.0
+    assert round(ps.max, 1) == 100.0
+
+
+def test_read_paramset_none_for_non_paramset(monkeypatch) -> None:
+    device = make_device()
+    # emission (0x30 -> 0x60) is a 1-byte register, not a paramset
+    monkeypatch.setattr(module, "registerRead", lambda *a, **k: (0, b"\x00"))
+    assert device.read_paramset(RegLoc.EMISSION) is None
+    assert device.describe(RegLoc.EMISSION) is None
+
+
+def test_read_paramset_rejects_garbage(monkeypatch) -> None:
+    device = make_device()
+    # 16 bytes but bogus unit code -> not a real paramset -> None
+    junk = bytes([117, 0]) + (1000).to_bytes(2, "little") * 6 + b"\x00\x00\x00\x00"
+    monkeypatch.setattr(module, "registerRead", lambda *a, **k: (0, junk))
+    assert device.read_paramset(RegLoc.WAVELENGTH_MODULATION_LEVEL) is None
+
+
+def test_validate_writes_enforces_limits(monkeypatch) -> None:
+    device = make_device()
+    device._validate_writes = True
+    writes: list[tuple[RegLoc, float, int]] = []
+    device.write = lambda reg, value, index=-1: writes.append((reg, value, index))  # type: ignore[method-assign]
+    blocks = {0xD3: _paramset_bytes(18, 2000, 0, 2569, 37)}
+    monkeypatch.setattr(
+        module,
+        "registerRead",
+        lambda port, dev, reg, index: (0, blocks[reg]) if reg in blocks else (4, b""),
+    )
+
+    device.modulation_gain = 150.0  # within [3.7, 256.9] -> writes
+    assert writes == [(RegLoc.EXTERNAL_MODULATION_GAIN, 150.0, 2)]
+
+    try:
+        device.modulation_gain = 300.0  # above max -> rejected before writing
+    except ValueError as exc:
+        assert "256.9" in str(exc)
+    else:
+        raise AssertionError("expected ValueError for out-of-range gain")
+    assert len(writes) == 1  # the rejected write never happened

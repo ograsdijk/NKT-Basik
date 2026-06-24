@@ -48,6 +48,12 @@ class RegLoc(Enum):
     WAVELENGTH_MODULATION_OFFSET = 0x2F  # 16-bit sint, permille
     AMPLITUDE_MODULATION_FREQUENCY = 0xBA
     AMPLITUDE_MODULATION_DEPTH = 0x2C
+    # External (piezo) wavelength-modulation gain -- the NKT CONTROL "modulation
+    # gain" slider (0-250 %). Register 0xA1 holds two 16-bit words; the gain is
+    # the HIGH word, so it must be read/written at byte index=2, in permille.
+    # (The 0xA3 setpoint / 0xD3 paramset that NKT CONTROL also updates are not
+    # directly accessible over the SDK -- they NACK on read and write.)
+    EXTERNAL_MODULATION_GAIN = 0xA1
 
 
 class RegTypeRead(Enum):
@@ -80,6 +86,7 @@ class RegTypeRead(Enum):
     WAVELENGTH_MODULATION_OFFSET = member(partial(registerReadS16))
     AMPLITUDE_MODULATION_FREQUENCY = member(partial(registerReadF32))
     AMPLITUDE_MODULATION_DEPTH = member(partial(registerReadU16))
+    EXTERNAL_MODULATION_GAIN = member(partial(registerReadU16))
 
     # make register functions callable
     def __call__(self, *args):
@@ -107,6 +114,7 @@ class RegTypeWrite(Enum):
     WAVELENGTH_MODULATION_LEVEL = member(partial(registerWriteU16))
     WAVELENGTH_MODULATION_OFFSET = member(partial(registerWriteS16))
     AMPLITUDE_MODULATION_DEPTH = member(partial(registerWriteU16))
+    EXTERNAL_MODULATION_GAIN = member(partial(registerWriteU16))
     MODULATION_SETUP = member(partial(registerWriteU16))
 
     # make register functions callable
@@ -131,6 +139,7 @@ class RegScaling(Enum):
     WAVELENGTH_MODULATION_LEVEL = 0.1
     WAVELENGTH_MODULATION_OFFSET = 0.1
     AMPLITUDE_MODULATION_DEPTH = 0.1
+    EXTERNAL_MODULATION_GAIN = 0.1
 
 
 class RegUnits(Enum):
@@ -151,3 +160,13 @@ class RegUnits(Enum):
     WAVELENGTH_MODULATION_LEVEL = "permille"
     WAVELENGTH_MODULATION_OFFSET = "permille"
     AMPLITUDE_MODULATION_FREQUENCY = "Hz"
+    AMPLITUDE_MODULATION_DEPTH = "permille"
+    EXTERNAL_MODULATION_GAIN = "permille"
+
+
+# A settings register's parameter-set (metadata) register lives at primary + 0x30
+# on the Basik K1x2 -- verified across the 0x10-0x2F and 0x90-0xAF analog blocks.
+# Exception: the external modulation gain is *accessed* via the live register 0xA1
+# (high word), but its parameter set belongs to the 0xA3 setpoint, i.e. 0xD3.
+PARAMSET_OFFSET = 0x30
+PARAMSET_ADDRESS_OVERRIDE = {RegLoc.EXTERNAL_MODULATION_GAIN: 0xD3}
