@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum
 from typing import Type, TypeVar
 
@@ -22,14 +23,23 @@ from .constants_and_enums import (
 from .dll.NKTP_DLL import (
     DeviceResultTypes,
     NKTRegisterException,
+    ParamSetUnitTypes,
     PortResultTypes,
     RegisterResultTypes,
     closePorts,
     deviceCreate,
     deviceRemove,
     openPorts,
+    registerRead,
 )
-from .dll.register_enums import RegLoc, RegScaling, RegTypeRead, RegTypeWrite
+from .dll.register_enums import (
+    PARAMSET_ADDRESS_OVERRIDE,
+    PARAMSET_OFFSET,
+    RegLoc,
+    RegScaling,
+    RegTypeRead,
+    RegTypeWrite,
+)
 from .utils import frequency_to_wavelength, wavelength_to_frequency
 
 _E = TypeVar("_E", bound=Enum)
@@ -43,21 +53,57 @@ class BasikTypeError(TypeError):
     pass
 
 
+@dataclass
+class ParamSet:
+    """Parsed NKT parameter set (device-described metadata) for a register.
+
+    All numeric fields are in engineering units (raw register value x RegScaling),
+    matching the read/write properties. ``value`` is a snapshot of the setpoint at
+    read time -- the authoritative live value comes from the register's property.
+    """
+
+    register: RegLoc
+    unit: str
+    value: float
+    factory: float
+    min: float
+    max: float
+    raw_unit: int
+
+
+def _register_is_signed(register: RegLoc) -> bool:
+    """True if the register's read type is signed (so paramset fields are signed)."""
+    try:
+        read_fn = RegTypeRead[register.name].value
+        name = getattr(read_fn, "func", read_fn).__name__
+    except (KeyError, AttributeError):
+        return False
+    return any(tag in name for tag in ("ReadS8", "ReadS16", "ReadS32", "ReadS64"))
+
+
 class Basik:
     """High-level API for a single NKT Basik module.
 
     This API uses strict enum inputs for mode and modulation configuration.
     """
 
-    def __init__(self, port: str, devID: int):
+    _validate_writes: bool
+    _paramset_cache: dict[RegLoc, ParamSet]
+
+    def __init__(self, port: str, devID: int, validate_writes: bool = False):
         """Initialize NKT Basik module
 
         Args:
             port (str): COM port of the seed laser
             devID (int): device ID of the seed laser
+            validate_writes (bool): when True, scalar setters check the value
+                against the device's parameter-set limits and raise ValueError if
+                it is out of range, instead of issuing a write the module rejects.
         """
         self.port = port
         self.devID = devID
+        self._validate_writes = bool(validate_writes)
+        self._paramset_cache = {}
 
         self._connect()
 
@@ -157,6 +203,85 @@ class Basik:
             register_result = RegisterResultTypes(register_result).split(":")[-1]
             raise NKTRegisterException(
                 f"Basik write({register.name}, {index}): {register_result}"
+            )
+
+    def read_paramset(self, register: RegLoc, *, use_cache: bool = True):
+        """Read the NKT parameter set (unit, setpoint, factory default, min/max)
+        for a settings register, or ``None`` if it has no parameter set.
+
+        The parameter set lives at ``register + 0x30`` (with a known override for
+        the external modulation gain). The block is validated (known unit and
+        ``min <= max``) so registers without a real parameter set return ``None``
+        instead of garbage. Static metadata is cached; pass ``use_cache=False`` to
+        force a re-read.
+        """
+        cache = self.__dict__.setdefault("_paramset_cache", {})
+        if use_cache and register in cache:
+            return cache[register]
+        addr = PARAMSET_ADDRESS_OVERRIDE.get(register, register.value + PARAMSET_OFFSET)
+        if addr > 0xFF:
+            return None
+        result, raw = registerRead(self.port, self.devID, addr, -1)
+        if result != 0 or len(raw) < 16:
+            return None
+        unit_text = ParamSetUnitTypes(raw[0])
+        if unit_text == "Unknown unit":
+            return None
+        signed = _register_is_signed(register)
+
+        def field(offset: int) -> int:
+            return int.from_bytes(raw[offset : offset + 2], "little", signed=signed)
+
+        start, factory, ulimit, llimit = field(2), field(4), field(6), field(8)
+        if llimit > ulimit:
+            return None
+        scale = (
+            RegScaling[register.name].value
+            if register.name in RegScaling.__members__
+            else 1.0
+        )
+        paramset = ParamSet(
+            register=register,
+            unit=unit_text.split(":", 1)[-1].replace("Unit ", "").strip(),
+            value=start * scale,
+            factory=factory * scale,
+            min=llimit * scale,
+            max=ulimit * scale,
+            raw_unit=raw[0],
+        )
+        cache[register] = paramset
+        return paramset
+
+    def describe(self, register: RegLoc):
+        """GUI-friendly metadata for a register: ``{unit, min, max, factory, value}``.
+
+        Returns ``None`` for registers without a parameter set.
+        """
+        paramset = self.read_paramset(register)
+        if paramset is None:
+            return None
+        return {
+            "unit": paramset.unit,
+            "min": paramset.min,
+            "max": paramset.max,
+            "factory": paramset.factory,
+            "value": paramset.value,
+        }
+
+    def _validate(self, register: RegLoc, value: float) -> None:
+        """Raise ValueError if ``value`` is outside the register's paramset limits.
+
+        No-op unless write validation is enabled or the register has no paramset.
+        """
+        if not getattr(self, "_validate_writes", False):
+            return
+        paramset = self.read_paramset(register)
+        if paramset is None:
+            return
+        if not (paramset.min <= value <= paramset.max):
+            raise ValueError(
+                f"{register.name} value {value} is outside the allowed range "
+                f"[{paramset.min}, {paramset.max}] {paramset.unit}"
             )
 
     def _read_int(self, register: RegLoc, index: int = -1) -> int:
@@ -612,6 +737,7 @@ class Basik:
         Args:
             amplitude (float): wavelength modulation amplitude in % of full scale
         """
+        self._validate(RegLoc.WAVELENGTH_MODULATION_LEVEL, amplitude)
         self.write(RegLoc.WAVELENGTH_MODULATION_LEVEL, amplitude)
 
     @property
@@ -632,27 +758,58 @@ class Basik:
         Args:
             offset (float): wavelength modulation offset in % of full scale
         """
+        self._validate(RegLoc.WAVELENGTH_MODULATION_OFFSET, offset)
         self.write(RegLoc.WAVELENGTH_MODULATION_OFFSET, offset)
 
     @property
     def modulation_gain(self) -> float:
         """
-        Modulation gain
+        External (piezo) wavelength-modulation gain.
+
+        This is the NKT CONTROL "modulation gain" slider that scales how much the
+        external voltage modulation input drives the laser piezo (0-250 %). It is
+        stored in the high 16-bit word of register 0xA1, so it is read/written at
+        byte index 2, in permille.
 
         Returns:
-            float: modulation gain in % of full scale
+            float: external modulation gain in % (0-250)
         """
-        return self._read_float(RegLoc.AMPLITUDE_MODULATION_DEPTH)
+        return self._read_float(RegLoc.EXTERNAL_MODULATION_GAIN, index=2)
 
     @modulation_gain.setter
     def modulation_gain(self, gain: float) -> None:
         """
-        Set modulation gain.
+        Set the external (piezo) wavelength-modulation gain.
 
         Args:
-            gain (float): modulation gain in % of full scale
+            gain (float): external modulation gain in % (0-250)
         """
-        self.write(RegLoc.AMPLITUDE_MODULATION_DEPTH, gain)
+        self._validate(RegLoc.EXTERNAL_MODULATION_GAIN, gain)
+        self.write(RegLoc.EXTERNAL_MODULATION_GAIN, gain, index=2)
+
+    @property
+    def amplitude_modulation_depth(self) -> float:
+        """
+        Amplitude (intensity) modulation depth.
+
+        Note: this is the *intensity* AM depth (register 0x2C), a different
+        subsystem from the wavelength/piezo modulation gain above.
+
+        Returns:
+            float: amplitude modulation depth in % of full scale
+        """
+        return self._read_float(RegLoc.AMPLITUDE_MODULATION_DEPTH)
+
+    @amplitude_modulation_depth.setter
+    def amplitude_modulation_depth(self, depth: float) -> None:
+        """
+        Set amplitude (intensity) modulation depth.
+
+        Args:
+            depth (float): amplitude modulation depth in % of full scale
+        """
+        self._validate(RegLoc.AMPLITUDE_MODULATION_DEPTH, depth)
+        self.write(RegLoc.AMPLITUDE_MODULATION_DEPTH, depth)
 
     @property
     def modulation_coupling(self) -> ModulationCoupling:
